@@ -1002,7 +1002,7 @@ function settingsSheet(){
       {name:'bot', label:'Ім’я бота в Telegram', optional:true, placeholder:'Напр. MyTeacherBot', hint:'Потрібне для посилань-запрошень учнів у Telegram'},
       {name:'theme', label:'Тема', type:'seg', options:[['system','Як у системі'],['light','Світла'],['dark','Темна']]}
     ],
-    intro: cloud.on && cloud.me ? `<p class="result-note" style="font-size:14px">Ваш Telegram ID: <b>${esc(cloud.me.id)}</b>. Додайте його в секрет TEACHER_IDS у Supabase, щоб кабінет викладача відкривався лише вам.</p>` : '',
+    intro: `<p class="result-note">Версія ${APP_VERSION} · ${cloud.on ? 'дані в базі' : tg ? 'локально (немає зв’язку з базою)' : 'локально (відкрито поза Telegram)'}</p>` + (cloud.on && cloud.me ? `<p class="result-note" style="font-size:14px">Ваш Telegram ID: <b>${esc(cloud.me.id)}</b>. Додайте його в секрет TEACHER_IDS у Supabase, щоб кабінет викладача відкривався лише вам.</p>` : ''),
     onSubmit: v => { state.settings.name = v.name; state.settings.bot = v.bot.replace(/^@/, ''); state.settings.theme = v.theme || 'system'; applyTheme(); save(); toast('Налаштування збережено'); render(); }
   });
   const foot = sheetEl.querySelector('.sheet-foot');
@@ -1430,7 +1430,7 @@ function render(){
   const ae = document.activeElement, aeId = ae && ae.id;
   if (key !== lastRoute) ui.profileTab = 'overview';
   const views = isStudent() ? {home:viewStudentHome, schedule:viewStudentSchedule, homework:viewStudentHomework, materials:viewStudentMaterials} : {home:viewHome, students:viewStudents, schedule:viewSchedule, library:viewLibrary, tasks:viewTasks};
-  main.innerHTML = r==='students' && id ? viewProfile(id) : views[r]();
+  main.innerHTML = (cloud.error ? `<div class="page"><div class="banner" style="background:var(--cancel-bg);color:var(--cancel)"><span><b>Немає зв’язку з базою</b> — дані зберігаються лише на цьому пристрої. ${esc(cloud.error)}</span></div></div>` : '') + (r==='students' && id ? viewProfile(id) : views[r]());
   if (key !== lastRoute) window.scrollTo(0, 0);
   else { window.scrollTo(0, sy); if (aeId && $('#'+aeId)) $('#'+aeId).focus(); }
   lastRoute = key;
@@ -1551,7 +1551,8 @@ const CLOUD = {
   key: 'sb_publishable_jeEZpl6VpTMZRifPztp03w_RXsaWIdW',
   bot: 'mmytteacherappbot'
 };
-const cloud = {on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
+const APP_VERSION = '4';
+const cloud = {error:'', on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
 let booted = false;
 async function api(op, extra={}){
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
@@ -1673,7 +1674,11 @@ async function boot(){
       else if (r.role === 'invalid-invite') gate('Запрошення недійсне', 'Посилання застаріло або учня видалено. Попросіть викладача надіслати нове.');
       else gate('Потрібне запрошення', 'Цей бот — кабінет для учнів викладача. Попросіть у викладача посилання-запрошення й відкрийте його.');
     } catch(e){
-      cloud.on = false; initRole(); ready();
+      cloud.on = false;
+      cloud.error = e.status === 401 ? 'Telegram-підпис не пройшов перевірку — перевірте секрет BOT_TOKEN у Supabase (токен має бути від цього ж бота).'
+        : e.name === 'AbortError' ? 'Сервер не відповів за 15 секунд.'
+        : e.status ? `Сервер відповів помилкою ${e.status}: ${e.message}` : `Немає зв’язку з сервером (${e.message}).`;
+      initRole(); ready();
       toast(e.status === 401 ? 'Не вдалося перевірити вхід через Telegram — працюю локально на цьому пристрої' : 'Сервер недоступний — працюю локально на цьому пристрої', {error:true, ms:9000});
     }
   } else { initRole(); ready(); }
