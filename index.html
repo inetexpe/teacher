@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Кабінет викладача</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  /* Кольори — токени. Світла тема за замовчуванням, темна через data-theme або системне налаштування. */
+  :root{
+    --bg:#F6F2EA; --surface:#FFFDF8; --surface-2:#EFE9DE; --line:#E4DCCD; --line-strong:#D3C9B6;
+    --text:#2A2925; --muted:#6B665C; --faint:#8F887A;
+    --accent:#56664A; --accent-hover:#48573D; --accent-ink:#FFFFFF; --accent-soft:#E4E9DA;
+    --planned-bg:#E7EAEE; --planned:#45506A;
+    --done-bg:#E2EAD8; --done:#41582F;
+    --cancel-bg:#F3E3DD; --cancel:#8E4330;
+    --warn:#A2482F;
+    --shadow:0 18px 50px rgba(53,45,30,.16), 0 2px 6px rgba(53,45,30,.06);
+    --r:12px; --r-sm:8px;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --sans:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#191815; --surface:#211F1C; --surface-2:#2A2824; --line:#34312B; --line-strong:#45413A;
+      --text:#ECE7DD; --muted:#A9A295; --faint:#857E72;
+      --accent:#A8BA92; --accent-hover:#B9CAA4; --accent-ink:#1A1A16; --accent-soft:#2F3628;
+      --planned-bg:#2A2F38; --planned:#B4BED2;
+      --done-bg:#2C3626; --done:#B6CDA2;
+      --cancel-bg:#3A2A25; --cancel:#E2AA98;
+      --warn:#E79A82;
+      --shadow:0 18px 50px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#191815; --surface:#211F1C; --surface-2:#2A2824; --line:#34312B; --line-strong:#45413A;
+    --text:#ECE7DD; --muted:#A9A295; --faint:#857E72;
+    --accent:#A8BA92; --accent-hover:#B9CAA4; --accent-ink:#1A1A16; --accent-soft:#2F3628;
+    --planned-bg:#2A2F38; --planned:#B4BED2;
+    --done-bg:#2C3626; --done:#B6CDA2;
+    --cancel-bg:#3A2A25; --cancel:#E2AA98;
+    --warn:#E79A82;
+    --shadow:0 18px 50px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer;background:none;border:0;padding:0}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* Layout: бокова панель ≥900px, нижня навігація на вужчих екранах */
+  .app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+  .side{position:sticky;top:0;height:100vh;padding:28px 16px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 10px 22px}
+  .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:500 17px/1 var(--serif)}
+  .brand-name{font-weight:600;font-size:14px;line-height:1.2}
+  .brand-sub{color:var(--muted);font-size:12px}
+  .nav-link{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--r-sm);color:var(--muted);text-decoration:none;font-weight:500;font-size:14px}
+  .nav-link:hover{background:var(--surface-2);color:var(--text)}
+  .nav-link[aria-current="page"]{background:var(--surface);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+  .nav-link .count{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+  .side-tools{display:flex;gap:4px;padding:0 4px}
+  .icon-btn{width:36px;height:36px;border-radius:var(--r-sm);display:grid;place-items:center;color:var(--muted)}
+  .icon-btn:hover{background:var(--surface-2);color:var(--text)}
+
+  .next-pill{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line);font-size:13px;text-align:left;width:100%;min-width:0}
+  .next-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+  .next-pill.live .dot{box-shadow:0 0 0 4px var(--accent-soft)}
+  .next-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .next-pill b{font-weight:600}
+  .side .next-pill span{white-space:normal}
+
+  .topbar,.bottom-nav{display:none}
+  main{min-width:0;padding:40px 48px 80px}
+  .page{max-width:1040px;margin:0 auto}
+
+  @media (max-width:899px){
+    .app{grid-template-columns:minmax(0,1fr)}
+    .side{display:none}
+    .topbar{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:20;padding:10px 16px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+    .topbar .brand{padding:0}
+    .topbar .next-pill{flex:1;width:auto;padding:7px 10px}
+    main{padding:22px 16px calc(96px + env(safe-area-inset-bottom))}
+    .bottom-nav{display:grid;grid-template-columns:repeat(var(--n,5),1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+    .bottom-nav a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;font-size:11px;font-weight:500;color:var(--muted);text-decoration:none;border-radius:var(--r-sm)}
+    .bottom-nav a[aria-current="page"]{color:var(--accent)}
+    .bottom-nav svg.i{width:21px;height:21px}
+  }
+  @media (max-width:420px){ .topbar .brand-text{display:none} }
+
+  /* Типографіка сторінки */
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+  .eyebrow{color:var(--muted);font-size:13px;margin:0 0 6px}
+  h1{font:400 34px/1.15 var(--serif);letter-spacing:-.01em;margin:0}
+  h2{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0}
+  h3{font-size:16px;font-weight:600;margin:0}
+  .lede{color:var(--muted);margin:8px 0 0}
+  @media (max-width:899px){ h1{font-size:28px} .page-head{margin-bottom:20px} }
+
+  /* Кнопки */
+  .btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r-sm);font-weight:500;font-size:14px;white-space:nowrap;border:1px solid transparent}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-primary:hover{background:var(--accent-hover)}
+  .btn-ghost{border-color:var(--line-strong);background:var(--surface)}
+  .btn-ghost:hover{background:var(--surface-2)}
+  .btn-quiet{color:var(--muted);padding:0 10px}
+  .btn-quiet:hover{color:var(--text);background:var(--surface-2)}
+  .btn-danger{color:var(--warn);padding:0 10px}
+  .btn-danger:hover{background:var(--cancel-bg)}
+  .btn-sm{height:32px;padding:0 12px;font-size:13px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .link{color:var(--accent);font-weight:500;font-size:14px;text-decoration:none}
+  .link:hover{text-decoration:underline}
+
+  /* Поверхні */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+  .section{margin-top:34px}
+  .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .rows{list-style:none;margin:0;padding:0}
+  .rows>li+li{border-top:1px solid var(--line)}
+  .row{display:flex;align-items:center;gap:14px;padding:14px 16px;width:100%;text-align:left;min-width:0}
+  button.row:hover,a.row:hover{background:color-mix(in srgb,var(--surface-2) 55%,transparent)}
+  .rows>li:first-child>.row{border-radius:var(--r) var(--r) 0 0}
+  .rows>li:last-child>.row{border-radius:0 0 var(--r) var(--r)}
+  .rows>li:only-child>.row{border-radius:var(--r)}
+  .row-main{display:block;flex:1;min-width:0}
+  .row-title{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row-meta{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row-side{flex:none;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+  a.row{text-decoration:none;color:inherit}
+
+  .avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;flex:none;background:var(--surface-2);color:var(--text)}
+  .avatar.lg{width:56px;height:56px;font-size:19px}
+
+  /* Статуси — м'які кольорові позначки */
+  .pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
+  .st-planned{background:var(--planned-bg);color:var(--planned)}
+  .st-done{background:var(--done-bg);color:var(--done)}
+  .st-cancelled{background:var(--cancel-bg);color:var(--cancel)}
+  .tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap}
+
+  .progress{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .bar{width:64px;height:4px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--accent);border-radius:4px}
+  .bar.lg{width:100%;height:6px}
+
+  /* Чекбокс-кружечок для завдань */
+  .check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;flex:none;color:transparent;transition:background .15s,border-color .15s}
+  .check:hover{border-color:var(--accent)}
+  .check svg.i{width:13px;height:13px;stroke-width:2.4}
+  .check.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .done-text{text-decoration:line-through;color:var(--muted)}
+  .overdue{color:var(--warn)}
+
+  /* Головна */
+  .focus{padding:22px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .focus-time{font:400 40px/1 var(--serif);font-variant-numeric:tabular-nums}
+  .focus-body{flex:1;min-width:200px}
+  .focus-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+  .focus-name{font-size:18px;font-weight:600;margin-top:2px}
+  .grid-2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:32px}
+  @media (max-width:899px){ .grid-2{grid-template-columns:minmax(0,1fr);gap:0} .focus{padding:18px} .focus-time{font-size:32px} }
+  .time-col{width:52px;flex:none;font-variant-numeric:tabular-nums;font-weight:500}
+  .time-col small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+
+  /* Тулбар / фільтри */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .search{position:relative;flex:1 1 240px;min-width:0}
+  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .search input{padding-left:38px}
+  .input,.field input:not([type=checkbox]):not([type=radio]):not([type=file]),.field select,.field textarea,select.input{width:100%;height:40px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);outline:none}
+  .field textarea{height:auto;padding:10px 12px;resize:vertical;min-height:72px;line-height:1.5}
+  .input:focus,.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  select.input,.field select{appearance:none;padding-right:32px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23857E72' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+  .filter-select{width:auto;flex:0 1 auto;min-width:0}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line-strong);font-size:13px;font-weight:500;color:var(--muted);background:var(--surface)}
+  .chip:hover{color:var(--text)}
+  .chip[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--surface-2);gap:2px}
+  .seg button,.seg label{height:32px;padding:0 14px;border-radius:7px;font-size:13px;font-weight:500;color:var(--muted);display:inline-flex;align-items:center;cursor:pointer}
+  .seg button[aria-pressed="true"],.seg input:checked+span{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .seg label{padding:0}
+  .seg label span{height:32px;padding:0 14px;border-radius:7px;display:inline-flex;align-items:center}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label:has(input:focus-visible) span{outline:2px solid var(--accent)}
+  .banner{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:12px 16px;margin-bottom:24px;border-radius:var(--r);background:var(--accent-soft);font-size:14px}
+  body.gate .side,body.gate .topbar,body.gate .bottom-nav{display:none!important}
+  .sync-note{font-size:12px;color:var(--muted);padding:0 10px;min-height:18px}
+  .result-note{color:var(--muted);font-size:13px;margin:0 0 10px}
+
+  /* Порожні стани */
+  .empty{padding:36px 20px;text-align:center;color:var(--muted)}
+  .empty b{display:block;color:var(--text);font-weight:600;margin-bottom:4px}
+  .empty .btn{margin-top:14px}
+  .empty.sm{padding:22px 16px;font-size:14px}
+
+  /* Розклад */
+  .sched-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+  .sched-bar .date-label{font-weight:600;margin-right:auto;min-width:0}
+  .now-line{display:flex;align-items:center;gap:10px;padding:2px 16px;color:var(--accent);font-size:12px;font-weight:600}
+  .now-line::after{content:"";flex:1;height:1px;background:var(--accent);opacity:.6}
+  .rows>li.now-li{border-top:0}
+  .rows>li.now-li+li{border-top:0}
+  .week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+  .day-col{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-height:180px;display:flex;flex-direction:column;min-width:0}
+  .day-col.today{border-color:var(--accent)}
+  .day-head{padding:10px 10px 8px;text-align:left;border-bottom:1px solid var(--line);display:flex;align-items:baseline;justify-content:space-between;gap:4px;border-radius:var(--r) var(--r) 0 0}
+  .day-head:hover{background:var(--surface-2)}
+  .day-head .dn{font-size:12px;color:var(--muted)}
+  .day-head .dd{font-weight:600;font-variant-numeric:tabular-nums}
+  .day-col.today .dd{color:var(--accent)}
+  .day-list{padding:6px;display:flex;flex-direction:column;gap:4px}
+  .mini{display:block;text-align:left;padding:7px 8px;border-radius:7px;font-size:12px;line-height:1.35;width:100%;border-left:3px solid transparent}
+  .mini b{display:block;font-weight:600;font-variant-numeric:tabular-nums}
+  .mini span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mini.st-planned{border-left-color:var(--planned)}
+  .mini.st-done{border-left-color:var(--done)}
+  .mini.st-cancelled{border-left-color:var(--cancel);text-decoration:line-through}
+  .day-empty{color:var(--faint);font-size:12px;padding:8px}
+  @media (max-width:999px){
+    .week{grid-template-columns:1fr;gap:8px}
+    .day-col{min-height:0}
+    .day-list{flex-direction:row;flex-wrap:wrap}
+    .mini{width:auto;flex:1 1 140px}
+  }
+  .quick-done{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;color:var(--muted)}
+  .quick-done:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* Профіль */
+  .back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:14px;margin-bottom:18px}
+  .back:hover{color:var(--text)}
+  .profile-head{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
+  .profile-head .grow{flex:1;min-width:200px}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto;scrollbar-width:none}
+  .tab{padding:10px 12px;font-weight:500;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+  .tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--text)}
+  .stat-line{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+  .stat{padding:16px 18px}
+  .stat+.stat{border-left:1px solid var(--line)}
+  .stat .k{font-size:12px;color:var(--muted)}
+  .stat .v{font-weight:600;margin-top:2px}
+  @media (max-width:600px){ .stat-line{grid-template-columns:1fr} .stat+.stat{border-left:0;border-top:1px solid var(--line)} }
+  .prose{white-space:pre-wrap;margin:0}
+  .note-item{padding:14px 16px}
+  .note-item time{font-size:12px;color:var(--muted)}
+  .stepper{display:inline-flex;align-items:center;gap:4px}
+  .stepper button{width:30px;height:30px;border-radius:7px;border:1px solid var(--line-strong);display:grid;place-items:center;background:var(--surface)}
+  .inline-add{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+  .inline-add .input{flex:1;min-width:0}
+
+  /* Уроки */
+  .plan-block{padding:16px 18px}
+  .plan-block+.plan-block{border-top:1px solid var(--line)}
+  .plan-block h3{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+
+  /* Завдання */
+  .quick-task{display:flex;gap:8px;padding:10px;flex-wrap:wrap}
+  .quick-task .input{flex:1 1 220px}
+  .quick-task .input.date{flex:0 1 160px}
+  .quick-task select.input{flex:0 1 180px}
+  .group-title{display:flex;align-items:center;gap:8px;margin:26px 0 10px}
+  .group-title .n{color:var(--muted);font-size:13px;font-weight:500}
+  .task-row{display:flex;align-items:center;gap:12px;padding:12px 16px}
+  .task-row .row-main{cursor:pointer}
+  .task-edit{opacity:.0;transition:opacity .15s}
+  .task-row:hover .task-edit,.task-edit:focus-visible{opacity:1}
+  @media (hover:none){ .task-edit{opacity:1} }
+
+  /* Аркуш (модалка / bottom sheet) */
+  .overlay{position:fixed;inset:0;z-index:50;background:rgba(30,26,20,.38);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;transition:opacity .18s}
+  .overlay.show{opacity:1}
+  .sheet{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);width:100%;max-width:540px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;transform:translateY(8px);transition:transform .18s}
+  .sheet.wide{max-width:760px}
+  .overlay.show .sheet{transform:none}
+  .sheet-head{display:flex;align-items:center;gap:12px;padding:18px 20px 12px}
+  .sheet-head h2{font:400 22px/1.2 var(--serif);text-transform:none;letter-spacing:0;color:var(--text);flex:1}
+  .sheet-body{padding:4px 20px 20px;overflow:auto}
+  .sheet-foot{display:flex;gap:8px;align-items:center;padding:14px 20px;border-top:1px solid var(--line)}
+  .sheet-foot .spacer{flex:1}
+  @media (max-width:640px){
+    .overlay{align-items:flex-end;padding:0}
+    .sheet,.sheet.wide{max-width:none;border-radius:18px 18px 0 0;max-height:92vh;padding-bottom:env(safe-area-inset-bottom)}
+    .sheet{transform:translateY(24px)}
+  }
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 14px}
+  .field{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .field.half{grid-column:span 1}
+  @media (max-width:480px){ .field.half{grid-column:1/-1} }
+  .field>label,.field>.lbl{font-size:13px;font-weight:500}
+  .field .opt{color:var(--faint);font-weight:400}
+  .field .hint{font-size:12px;color:var(--muted)}
+  .field .err{font-size:12px;color:var(--warn);min-height:0}
+  .field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--warn)}
+  .check-line{display:flex;align-items:center;gap:10px;font-size:14px}
+  .check-line input{width:18px;height:18px;accent-color:var(--accent)}
+  .form-section{grid-column:1/-1;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:8px;padding-top:14px;border-top:1px solid var(--line)}
+  .detail-list{display:grid;grid-template-columns:110px 1fr;gap:10px 14px;margin:0 0 6px}
+  .detail-list dt{color:var(--muted);font-size:14px}
+  .detail-list dd{margin:0}
+  .action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:18px}
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .menu-item{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;border:1px solid var(--line);border-radius:var(--r);text-align:left}
+  .menu-item:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .menu-item small{color:var(--muted);font-size:13px;line-height:1.35}
+  .menu-item .ic{width:34px;height:34px;border-radius:9px;background:var(--surface-2);display:grid;place-items:center}
+
+  /* Тости */
+  .toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
+  @media (max-width:899px){ .toasts{bottom:calc(84px + env(safe-area-inset-bottom))} }
+  .toast{pointer-events:auto;display:flex;align-items:center;gap:14px;padding:11px 14px 11px 16px;border-radius:10px;background:var(--text);color:var(--bg);font-size:14px;box-shadow:var(--shadow);animation:tin .2s ease-out}
+  .toast.error{background:var(--cancel-bg);color:var(--cancel);border:1px solid currentColor}
+  .toast button{font-weight:600;color:inherit;text-decoration:underline;text-underline-offset:3px}
+  @keyframes tin{from{opacity:0;transform:translateY(6px)}}
+  @media (max-width:640px){ .hide-sm{display:none!important} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" aria-label="Навігація">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">L</div>
+      <div><div class="brand-name" id="side-title">Кабінет викладача</div><div class="brand-sub" id="side-name"></div></div>
+    </div>
+    <nav id="side-nav"></nav>
+    <div class="side-foot">
+      <div id="side-next"></div>
+      <div class="sync-note" id="sync-note" aria-live="polite"></div>
+      <div class="side-tools">
+        <button class="icon-btn" data-act="theme" id="theme-btn-side" aria-label="Змінити тему" title="Змінити тему"></button>
+        <button class="icon-btn" data-act="settings" aria-label="Налаштування" title="Налаштування"></button>
+      </div>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true">L</div><span class="brand-name brand-text" id="top-title">Кабінет</span></div>
+    <div id="top-next" style="flex:1;min-width:0;display:flex"></div>
+    <button class="icon-btn" data-act="theme" id="theme-btn-top" aria-label="Змінити тему"></button>
+    <button class="icon-btn" data-act="settings" aria-label="Налаштування"></button>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Розділи"></nav>
+</div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+/* ========== Утиліти ========== */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+const pad = n => String(n).padStart(2, '0');
+const isoDate = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const todayISO = () => isoDate(new Date());
+const addDays = (iso, n) => { const d = parseDate(iso); d.setDate(d.getDate()+n); return isoDate(d); };
+const parseDate = iso => { const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); };
+const lessonStart = l => new Date(l.date + 'T' + l.time);
+const lessonEnd = l => new Date(lessonStart(l).getTime() + l.duration*60000);
+const hm = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
+const plural = (n, f) => { const a = Math.abs(n)%100, b = a%10; return f[a>10&&a<20 ? 2 : b===1 ? 0 : b>=2&&b<=4 ? 1 : 2]; };
+const fmt = (iso, o) => parseDate(iso).toLocaleDateString('uk-UA', o);
+const fmtShort = iso => fmt(iso, {weekday:'short', day:'numeric', month:'short'}).replace('.', '');
+const fmtLong = iso => fmt(iso, {weekday:'long', day:'numeric', month:'long'});
+const dayDiff = iso => Math.round((parseDate(iso) - parseDate(todayISO())) / 864e5);
+const weekStart = iso => { const d = parseDate(iso); const w = (d.getDay()+6)%7; d.setDate(d.getDate()-w); return isoDate(d); };
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join('').toUpperCase();
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const relDay = iso => { const n = dayDiff(iso); return n===0 ? 'Сьогодні' : n===1 ? 'Завтра' : n===-1 ? 'Вчора' : fmtShort(iso); };
+
+const ICONS = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.6 3 5.2"/>',
+  calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  book:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19v-3"/><path d="M8.5 7.5h6"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  tasks:'<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 3 3 5-6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+  settings:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  left:'<path d="m15 5-7 7 7 7"/>',
+  right:'<path d="m9 5 7 7-7 7"/>',
+  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  edit:'<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  note:'<path d="M5 4h14v11l-5 5H5z"/><path d="M14 20v-5h5M9 9h6M9 12.5h3"/>',
+  ext:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  download:'<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>'
+};
+const ic = (n, cls='') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+
+const LANGS = ['Англійська','Німецька','Іспанська','Французька','Італійська','Польська'];
+const LEVELS = ['A1','A2','B1','B2','C1','C2'];
+const FORMATS = ['Онлайн','Офлайн','Група'];
+const SKILLS = ['Говоріння','Аудіювання','Читання','Письмо','Граматика','Лексика'];
+const DURATIONS = [30,45,60,90];
+const STATUS = {planned:'Заплановано', done:'Проведено', cancelled:'Скасовано'};
+const AV_TONES = {'Англійська':['#E3E8DA','#3F4F33'],'Німецька':['#EDE3D3','#6A4E23'],'Іспанська':['#F1E0D8','#7E3D27'],'Французька':['#E2E6EE','#3C4A66'],'Італійська':['#E9E4D3','#5D5326'],'Польська':['#EEE0E3','#6F3442']};
+const avatar = (s, lg) => { const t = AV_TONES[s.lang] || ['var(--surface-2)','var(--text)']; return `<span class="avatar${lg?' lg':''}" style="background:${t[0]};color:${t[1]}" aria-hidden="true">${esc(initials(s.name))}</span>`; };
+
+/* ========== Демо-дані ========== */
+function seed(){
+  const today = todayISO(), now = new Date();
+  const S = (id, name, lang, level, format, progress, goals, summary, touched) => ({id, name, lang, level, format, progress, goals, summary, touched, notes:[], homework:[], materialIds:[], created: Date.now()});
+  const students = [
+    S('s1','Олена Коваль','Англійська','B1','Онлайн',62,'Вільно проходити співбесіди англійською до грудня. Розширити бізнес-лексику, прибрати паузи в мовленні.','Впевнено говорить, плутає Present Perfect і Past Simple.',1),
+    S('s2','Максим Дорошенко','Німецька','A2','Офлайн',40,'Скласти Goethe-Zertifikat A2 у березні.','Добре читає, слабке аудіювання.',4),
+    S('s3','Софія Мельник','Англійська','C1','Онлайн',85,'IELTS Academic 7.5 — подача документів на магістратуру.','Writing Task 2: структура є, бракує зв’язок.',2),
+    S('s4','Андрій Ткаченко','Іспанська','A1','Онлайн',15,'Базове спілкування для подорожі до Валенсії влітку.','Тільки почали, вивчаємо привітання та числа.',6),
+    S('s5','Ірина Бондар','Французька','B2','Офлайн',70,'Читати сучасну прозу в оригіналі, підготовка до DELF B2.','Багатий словник, працюємо над subjonctif.',3),
+    S('s6','Talk Club · четвер','Англійська','B1','Група',50,'Розмовна практика для групи з 5 людей.','Група активна, теми про подорожі заходять найкраще.',5),
+    S('s7','Даниїл Савчук','Англійська','A2','Онлайн',33,'Підтягнути шкільну програму, 9 клас.','Потребує більше практики письма.',7)
+  ];
+  students.forEach((s,i) => s.touched = Date.now() - s.touched*3600e3);
+  const slots = {
+    s1:[[0,'17:00',60],[3,'17:00',60]], s2:[[1,'10:00',60],[4,'10:00',60]], s3:[[0,'19:00',90],[2,'19:00',90]],
+    s4:[[2,'12:00',45]], s5:[[1,'15:00',60],[5,'15:00',60]], s6:[[0,'13:30',90]], s7:[[3,'09:30',45],[6,'11:00',45]]
+  };
+  const topics = {
+    s1:['Present Perfect vs Past Simple','Small talk на співбесіді','Розповідь про досвід','Бізнес-листування'],
+    s2:['Im Restaurant','Trennbare Verben','Wohnungssuche','Hören: Am Bahnhof'],
+    s3:['IELTS Writing Task 2','Speaking Part 3','Academic vocabulary','Reading: True/False/Not given'],
+    s4:['Saludos y presentaciones','Los números 1–100','En el café'],
+    s5:['Le subjonctif','Débat: le télétravail','Compréhension orale'],
+    s6:['Travel stories','Food & culture','Unpopular opinions'],
+    s7:['Past Simple','Writing an email','Irregular verbs']
+  };
+  const noteBank = ['Добре попрацювали, ДЗ виконано.','Варто повторити лексику з минулого уроку.','Помітний прогрес у вимові.','Втомився, зробили легший формат.','Чудова дискусія, нові слова засвоєно.'];
+  const lessons = []; let k = 0;
+  for (let off = -21; off <= 13; off++){
+    const date = addDays(today, off);
+    const rel = ((off % 7) + 7) % 7;
+    for (const sid in slots){
+      for (const [d, time, duration] of slots[sid]){
+        if (d !== rel) continue;
+        const t = topics[sid][Math.abs(Math.floor(off/7)+k) % topics[sid].length];
+        const l = {id:uid(), studentId:sid, date, time, duration, topic:t, status:'planned', note:''};
+        if (lessonEnd(l) < now){
+          l.status = (k % 9 === 4) ? 'cancelled' : 'done';
+          if (l.status === 'done' && k % 2 === 0) l.note = noteBank[k % noteBank.length];
+        }
+        lessons.push(l); k++;
+      }
+    }
+  }
+  const N = (sid, days, text) => students.find(s=>s.id===sid).notes.push({id:uid(), date:addDays(today,-days), text});
+  N('s1',2,'Попросила більше рольових ігор для співбесід.'); N('s1',9,'Шукає роботу в IT-компанії, мотивація висока.');
+  N('s3',3,'Есе стали логічнішими. Наступний крок — cohesive devices.'); N('s5',4,'Хоче читати Анні Ерно — підібрати уривки.');
+  N('s2',6,'Краще працює з візуальними опорами.');
+  const H = (sid, text, done) => students.find(s=>s.id===sid).homework.push({id:uid(), text, done});
+  H('s1','Workbook p. 34–35, вправи 2–5',false); H('s1','Записати 2-хвилинне аудіо про свій досвід',true);
+  H('s2','Lektion 7: Wortschatz вивчити',false); H('s3','Essay: “Some people think…” 250 слів',false);
+  H('s4','Повторити числа 1–20',true); H('s5','Прочитати 1 розділ і виписати 10 виразів',false); H('s7','10 речень у Past Simple',false);
+
+  const P = (id, title, lang, level, isTemplate, f) => Object.assign({id, title, lang, level, isTemplate, topic:'', goal:'', vocab:'', grammar:'', practice:'', homework:'', after:'', updated: Date.now()}, f);
+  const plans = [
+    P('p1','Розмовний урок · 60 хв','','',true,{topic:'Тема для обговорення',goal:'Розговорити учня, активізувати лексику теми.',vocab:'8–10 слів і виразів по темі',grammar:'—',practice:'1. Warm-up питання (5 хв)\n2. Відео/текст (10 хв)\n3. Обговорення (25 хв)\n4. Рольова гра (15 хв)\n5. Підсумок і помилки (5 хв)',homework:'Записати голосове 1–2 хв на тему уроку'}),
+    P('p2','Граматика: пояснення + практика','','',true,{topic:'Граматична тема',goal:'Зрозуміти й відпрацювати конструкцію в контексті.',vocab:'Слова з прикладів',grammar:'Правило + 3 приклади з життя учня',practice:'1. Discovery: знайти правило в тексті\n2. Контрольована практика\n3. Вільна практика: розповідь/діалог',homework:'Вправи на закріплення + 5 власних речень'}),
+    P('p3','Підготовка до іспиту: Writing','','B2',true,{topic:'Тип завдання',goal:'Відпрацювати структуру та критерії оцінювання.',vocab:'Linking words, academic phrases',grammar:'Складні речення, пасив',practice:'1. Розбір зразка\n2. План есе (10 хв)\n3. Написання (40 хв)\n4. Самоперевірка за критеріями',homework:'Есе на нову тему'}),
+    P('p4','Present Perfect vs Past Simple','Англійська','B1',false,{topic:'Досвід vs конкретний момент у минулому',goal:'Олена правильно обирає час у розповіді про досвід роботи.',vocab:'achieve, manage, be in charge of, so far, recently',grammar:'have/has + V3 vs V2; маркери ever/never/yet vs ago/last',practice:'1. Таймлайн своєї кар’єри\n2. Вправа на вибір часу (12 речень)\n3. Mock interview: “Tell me about…”',homework:'Workbook p. 34–35',after:''}),
+    P('p5','Im Restaurant','Німецька','A2',false,{topic:'Замовлення їжі',goal:'Замовити страви та попросити рахунок.',vocab:'die Speisekarte, bestellen, die Rechnung, zahlen',grammar:'möchte + Akkusativ',practice:'1. Меню реального ресторану\n2. Діалог-рольова гра\n3. Аудіо: в кафе',homework:'Lektion 7: Wortschatz'}),
+    P('p6','Saludos y presentaciones','Іспанська','A1',false,{topic:'Знайомство',goal:'Привітатися, представитися, сказати звідки ти.',vocab:'hola, me llamo, soy de, encantado',grammar:'ser: soy, eres, es',practice:'1. Відео-знайомство\n2. Картки з іменами та країнами\n3. Міні-діалог',homework:'Записати аудіо-представлення'})
+  ];
+  const M = (id, title, url, file, lang, level, skill, topic) => ({id, title, url, file, lang, level, skill, topic});
+  const materials = [
+    M('m1','BBC Learning English — 6 Minute English','https://www.bbc.co.uk/learningenglish/english/features/6-minute-english',null,'Англійська','B1','Аудіювання','Подкасти'),
+    M('m2','British Council — Grammar reference','https://learnenglish.britishcouncil.org/grammar',null,'Англійська','B1','Граматика','Часи'),
+    M('m3','IELTS Writing Task 2 — офіційні зразки','https://www.ielts.org',null,'Англійська','C1','Письмо','IELTS'),
+    M('m4','DW — Nicos Weg (A2)','https://learngerman.dw.com',null,'Німецька','A2','Аудіювання','Відеокурс'),
+    M('m5','Le Point du FLE — subjonctif','https://www.lepointdufle.net',null,'Французька','B2','Граматика','Subjonctif'),
+    M('m6','Talk Club — питання для дискусій.pdf','',{name:'talk-club-questions.pdf',size:184320},'Англійська','B1','Говоріння','Дискусії'),
+    M('m7','Картки: phrasal verbs (50 шт).pdf','',{name:'phrasal-verbs-cards.pdf',size:512000},'Англійська','B2','Лексика','Phrasal verbs'),
+    M('m8','Числа та привітання — шпаргалка','',{name:'numeros-saludos.png',size:96000},'Іспанська','A1','Лексика','Знайомство')
+  ];
+  students.find(s=>s.id==='s1').materialIds = ['m2','m1'];
+  students.find(s=>s.id==='s3').materialIds = ['m3'];
+  students.find(s=>s.id==='s2').materialIds = ['m4'];
+  students.find(s=>s.id==='s5').materialIds = ['m5'];
+  students.find(s=>s.id==='s6').materialIds = ['m6','m7'];
+  students.find(s=>s.id==='s4').materialIds = ['m8'];
+  const T = (text, due, studentId, done=false) => ({id:uid(), text, due: due===null ? '' : addDays(today,due), studentId, done, created:Date.now()});
+  const tasks = [
+    T('Перевірити есе Софії (IELTS Task 2)',-1,'s3'),
+    T('Надіслати Олені вправи на Present Perfect',0,'s1'),
+    T('Підготувати аудіо та питання для Talk Club',0,'s6'),
+    T('Підготувати наступний урок для Андрія',1,'s4'),
+    T('Скласти пробний тест A2 для Максима',3,'s2'),
+    T('Оновити картки лексики для Ірини',5,'s5'),
+    T('Знайти нові подкасти рівня B1',null,''),
+    T('Перевірити ДЗ Даниїла',-2,'s7',true)
+  ];
+  return {v:1, students, lessons, plans, materials, tasks, settings:{name:'Ганно', theme:'system', bot:''}};
+}
+
+/* ========== Стан ========== */
+const LS_KEY = 'teacher-workspace-v1';
+let state;
+try { state = JSON.parse(localStorage.getItem(LS_KEY)); } catch(e) { state = null; }
+if (!state || state.v !== 1) state = seed();
+function save(){
+  if (cloud.on){
+    if (isStudent()){ try { localStorage.setItem('tw-theme', state.settings.theme); } catch(e){} }
+    else queueCloudSave();
+    return true;
+  }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; }
+  catch(e){ toast('Не вдалося зберегти: сховище браузера заповнене або недоступне', {error:true}); return false; }
+}
+const ui = {
+  st:{q:'', lang:'', level:'', format:''},
+  sched:{view: matchMedia('(max-width:640px)').matches ? 'day' : 'week', date: todayISO()},
+  lib:{tab:'plans', q:'', skill:'', level:''},
+  tasks:{student:'', showDone:false},
+  profileTab:'overview'
+};
+const ROLE_KEY = 'teacher-workspace-role';
+let mode = {role:'teacher'};
+const isStudent = () => mode.role === 'student';
+function initRole(){
+  let p = '';
+  try { p = (window.Telegram && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param) || ''; } catch(e){}
+  const q = new URLSearchParams(location.search);
+  p = p || q.get('startapp') || (q.get('s') ? 's_' + q.get('s') : '');
+  if (/^s_[\w-]+$/.test(p)){
+    mode = {role:'student', studentId: p.slice(2)};
+    try { localStorage.setItem(ROLE_KEY, JSON.stringify(mode)); } catch(e){}
+    try { if (q.has('s') || q.has('startapp')) history.replaceState(null, '', location.pathname + location.hash); } catch(e){}
+    return;
+  }
+  try { const r = JSON.parse(localStorage.getItem(ROLE_KEY)); if (r && r.role === 'student' && r.studentId) mode = {role:'student', studentId:r.studentId}; } catch(e){}
+}
+const student = id => state.students.find(s => s.id === id);
+const touch = id => { const s = student(id); if (s) s.touched = Date.now(); };
+const snapshot = () => JSON.stringify(state);
+const restore = snap => { state = JSON.parse(snap); save(); render(); };
+
+function nextLessonOf(sid){
+  const now = new Date();
+  return state.lessons.filter(l => l.studentId===sid && l.status==='planned' && lessonEnd(l) > now)
+    .sort((a,b) => lessonStart(a)-lessonStart(b))[0];
+}
+function upcoming(){
+  const now = new Date();
+  return state.lessons.filter(l => l.status==='planned' && lessonEnd(l) > now && (!isStudent() || l.studentId===(me()||{}).id)).sort((a,b) => lessonStart(a)-lessonStart(b))[0];
+}
+function relTime(l){
+  const now = new Date(), s = lessonStart(l);
+  if (s <= now) return 'йде зараз';
+  const min = Math.round((s - now)/60000);
+  if (l.date === todayISO()){
+    if (min < 60) return `через ${min} хв`;
+    const h = Math.floor(min/60), m = min%60;
+    return `через ${h} год${m ? ' ' + m + ' хв' : ''}`;
+  }
+  return (dayDiff(l.date)===1 ? 'завтра' : fmtShort(l.date)) + ' о ' + l.time;
+}
+const lessonsOn = iso => state.lessons.filter(l => l.date===iso).sort((a,b) => a.time.localeCompare(b.time));
+const openTasks = () => state.tasks.filter(t => !t.done);
+
+/* ========== Тости ========== */
+function toast(msg, {error=false, undo=null, ms=4200}={}){
+  const el = document.createElement('div');
+  el.className = 'toast' + (error ? ' error' : '');
+  el.innerHTML = `<span>${esc(msg)}</span>` + (undo ? '<button type="button">Скасувати</button>' : '');
+  if (undo) el.querySelector('button').onclick = () => { undo(); el.remove(); };
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), undo ? 6500 : ms);
+}
+function haptic(type='success'){ try{ Telegram.WebApp.HapticFeedback.notificationOccurred(type); }catch(e){} }
+
+/* ========== Аркуш (модалка) ========== */
+let sheetEl = null, lastFocus = null;
+function openSheet(title, body, {foot='', wide=false, onMount}={}){
+  closeSheet(true);
+  lastFocus = document.activeElement;
+  sheetEl = document.createElement('div');
+  sheetEl.className = 'overlay';
+  sheetEl.innerHTML = `<div class="sheet${wide?' wide':''}" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-head"><h2 id="sheet-title">${esc(title)}</h2><button class="icon-btn" data-close aria-label="Закрити">${ic('x')}</button></div>
+    <div class="sheet-body">${body}</div>${foot ? `<div class="sheet-foot">${foot}</div>` : ''}</div>`;
+  sheetEl.addEventListener('mousedown', e => { if (e.target === sheetEl) closeSheet(); });
+  sheetEl.querySelector('[data-close]').onclick = () => closeSheet();
+  document.body.appendChild(sheetEl);
+  requestAnimationFrame(() => sheetEl && sheetEl.classList.add('show'));
+  onMount && onMount(sheetEl);
+  const f = sheetEl.querySelector('[autofocus]') || sheetEl.querySelector('input:not([type=hidden]),select,textarea,button:not([data-close])');
+  if (f && !matchMedia('(hover:none)').matches) f.focus();
+  else { const sh = sheetEl.querySelector('.sheet'); sh.setAttribute('tabindex','-1'); sh.focus(); }
+  syncBack();
+  return sheetEl;
+}
+function closeSheet(silent){
+  if (!sheetEl) return;
+  sheetEl.remove(); sheetEl = null;
+  if (!silent && lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  syncBack();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && sheetEl) closeSheet();
+  if (e.key === 'Tab' && sheetEl){
+    const f = [...sheetEl.querySelectorAll('button,input,select,textarea,a[href]')].filter(x => !x.disabled && x.offsetParent);
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]){ e.preventDefault(); f[f.length-1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length-1]){ e.preventDefault(); f[0].focus(); }
+  }
+});
+
+/* Форми: опис полів → розмітка, збір і валідація */
+function fieldHTML(f, v){
+  const id = 'f_' + f.name, val = v ?? f.value ?? '';
+  const opts = (f.options || []).map(o => Array.isArray(o) ? o : [o, o]);
+  let input;
+  switch (f.type){
+    case 'textarea': input = `<textarea id="${id}" name="${f.name}" rows="${f.rows||3}" placeholder="${esc(f.placeholder||'')}">${esc(val)}</textarea>`; break;
+    case 'select': input = `<select id="${id}" name="${f.name}">${f.empty!==undefined ? `<option value="">${esc(f.empty)}</option>` : ''}${opts.map(([k,l]) => `<option value="${esc(k)}"${String(k)===String(val)?' selected':''}>${esc(l)}</option>`).join('')}</select>`; break;
+    case 'seg': input = `<div class="seg" role="radiogroup" aria-label="${esc(f.label)}">${opts.map(([k,l]) => `<label><input type="radio" name="${f.name}" value="${esc(k)}"${String(k)===String(val)?' checked':''}><span>${esc(l)}</span></label>`).join('')}</div>`; break;
+    case 'checkbox': return `<div class="field" data-field="${f.name}"><label class="check-line"><input type="checkbox" name="${f.name}"${val?' checked':''}> ${esc(f.label)}</label>${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}</div>`;
+    case 'section': return `<div class="form-section">${esc(f.label)}</div>`;
+    case 'file': input = `<input id="${id}" type="file" name="${f.name}">`; break;
+    default: input = `<input id="${id}" type="${f.type||'text'}" name="${f.name}" value="${esc(val)}" placeholder="${esc(f.placeholder||'')}"${f.autofocus?' autofocus':''}${f.min!==undefined?` min="${f.min}"`:''}${f.max!==undefined?` max="${f.max}"`:''} autocomplete="off">`;
+  }
+  const lbl = f.type==='seg' ? `<span class="lbl">${esc(f.label)}</span>` : `<label for="${id}">${esc(f.label)}${f.optional?'<span class="opt"> · необов’язково</span>':''}</label>`;
+  return `<div class="field${f.half?' half':''}" data-field="${f.name}">${lbl}${input}${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}<div class="err"></div></div>`;
+}
+function openForm({title, fields, values={}, submit='Зберегти', onSubmit, danger, wide, intro=''}){
+  const body = `${intro}<form id="sheet-form" novalidate><div class="form-grid">${fields.map(f => fieldHTML(f, values[f.name])).join('')}</div><button type="submit" class="sr">${esc(submit)}</button></form>`;
+  const foot = `${danger ? `<button type="button" class="btn btn-danger" data-danger>${ic('trash')} ${esc(danger.label)}</button>` : ''}<span class="spacer"></span><button type="button" class="btn btn-quiet" data-cancel>Скасувати</button><button type="button" class="btn btn-primary" data-submit>${esc(submit)}</button>`;
+  const el = openSheet(title, body, {foot, wide});
+  const form = el.querySelector('form');
+  const doSubmit = async () => {
+    const vals = {};
+    for (const f of fields){
+      if (!f.name || f.type==='section') continue;
+      const inp = form.elements[f.name];
+      if (f.type==='checkbox') vals[f.name] = inp.checked;
+      else if (f.type==='file') vals[f.name] = inp.files[0] || null;
+      else if (f.type==='seg') vals[f.name] = (form.querySelector(`input[name="${f.name}"]:checked`)||{}).value || '';
+      else vals[f.name] = (inp.value || '').trim();
+    }
+    form.querySelectorAll('.field').forEach(x => { x.classList.remove('invalid'); const e = x.querySelector('.err'); if (e) e.textContent=''; });
+    const errs = {};
+    fields.forEach(f => { if (f.required && !vals[f.name]) errs[f.name] = f.reqMsg || 'Заповніть це поле'; });
+    if (!Object.keys(errs).length){
+      const r = await onSubmit(vals);
+      if (r && typeof r === 'object') Object.assign(errs, r);
+      else if (typeof r === 'string'){ toast(r, {error:true}); return; }
+    }
+    const keys = Object.keys(errs);
+    if (keys.length){
+      keys.forEach(k => { const x = form.querySelector(`[data-field="${k}"]`); if (x){ x.classList.add('invalid'); x.querySelector('.err').textContent = errs[k]; } });
+      const first = form.querySelector(`[data-field="${keys[0]}"] input, [data-field="${keys[0]}"] select, [data-field="${keys[0]}"] textarea`);
+      first && first.focus();
+      haptic('error');
+      return;
+    }
+    closeSheet();
+  };
+  form.onsubmit = e => { e.preventDefault(); doSubmit(); };
+  el.querySelector('[data-submit]').onclick = doSubmit;
+  el.querySelector('[data-cancel]').onclick = () => closeSheet();
+  if (danger) el.querySelector('[data-danger]').onclick = () => danger.onClick();
+  return el;
+}
+function confirmSheet(title, text, label, fn){
+  const el = openSheet(title, `<p style="margin:0;color:var(--muted)">${esc(text)}</p>`, {foot:`<span class="spacer"></span><button class="btn btn-quiet" data-no>Залишити</button><button class="btn btn-primary" data-yes>${esc(label)}</button>`});
+  el.querySelector('[data-no]').onclick = () => closeSheet();
+  el.querySelector('[data-yes]').onclick = () => { closeSheet(); fn(); };
+}
+
+/* ========== Форми сутностей ========== */
+const studentOpts = () => state.students.slice().sort((a,b)=>a.name.localeCompare(b.name,'uk')).map(s => [s.id, s.name]);
+
+function studentForm(id){
+  const s = id ? student(id) : null;
+  openForm({
+    title: s ? 'Редагувати учня' : 'Новий учень',
+    submit: s ? 'Зберегти' : 'Додати учня',
+    values: s || {lang:'Англійська', level:'A2', format:'Онлайн', progress:0},
+    fields: [
+      {name:'name', label:'Ім’я', required:true, placeholder:'Напр. Марія Іваненко', autofocus:true, reqMsg:'Вкажіть ім’я учня'},
+      {name:'lang', label:'Мова', type:'select', options:LANGS, half:true},
+      {name:'level', label:'Рівень', type:'select', options:LEVELS, half:true},
+      {name:'format', label:'Формат занять', type:'seg', options:FORMATS},
+      {name:'goals', label:'Мета навчання', type:'textarea', optional:true, rows:2, placeholder:'Що учень хоче досягти?'},
+      ...(s ? [{name:'summary', label:'Коротка нотатка про прогрес', optional:true, placeholder:'Показується у списку учнів'}] : [])
+    ],
+    danger: s ? {label:'Видалити', onClick: () => deleteStudent(s.id)} : null,
+    onSubmit: v => {
+      if (s){ Object.assign(s, v); s.touched = Date.now(); save(); toast('Зміни збережено'); render(); }
+      else {
+        const n = {id:uid(), ...v, progress:0, summary:'', notes:[], homework:[], materialIds:[], touched:Date.now(), created:Date.now()};
+        state.students.push(n); save(); toast(`${n.name} — додано до учнів`); location.hash = '#students/' + n.id;
+      }
+    }
+  });
+}
+function deleteStudent(id){
+  const s = student(id), n = state.lessons.filter(l => l.studentId===id).length;
+  confirmSheet('Видалити учня?', `${s.name} та ${n} ${plural(n,['урок','уроки','уроків'])} у розкладі буде видалено. Завдання залишаться без прив’язки.`, 'Видалити', () => {
+    const snap = snapshot();
+    state.students = state.students.filter(x => x.id!==id);
+    state.lessons = state.lessons.filter(l => l.studentId!==id);
+    state.tasks.forEach(t => { if (t.studentId===id) t.studentId=''; });
+    save(); location.hash = '#students'; render();
+    toast('Учня видалено', {undo: () => restore(snap)});
+  });
+}
+
+function findConflict(l, ignoreId){
+  const s = lessonStart(l), e = lessonEnd(l);
+  return state.lessons.find(o => o.id!==ignoreId && o.status!=='cancelled' && o.date===l.date && lessonStart(o) < e && lessonEnd(o) > s);
+}
+function lessonForm(id, preset={}){
+  const l = id ? state.lessons.find(x => x.id===id) : null;
+  if (!state.students.length){ toast('Спершу додайте учня', {error:true}); return; }
+  openForm({
+    title: l ? 'Редагувати урок' : 'Новий урок',
+    submit: l ? 'Зберегти' : 'Додати урок',
+    values: l || {studentId: preset.studentId || '', date: preset.date || ui.sched.date || todayISO(), time: preset.time || '10:00', duration: 60, status:'planned'},
+    fields: [
+      {name:'studentId', label:'Учень', type:'select', options: studentOpts(), empty:'Оберіть учня', required:true, reqMsg:'Оберіть учня'},
+      {name:'date', label:'Дата', type:'date', required:true, half:true},
+      {name:'time', label:'Час', type:'time', required:true, half:true},
+      {name:'duration', label:'Тривалість', type:'seg', options: DURATIONS.map(d => [d, d+' хв'])},
+      {name:'topic', label:'Тема', optional:true, placeholder:'Напр. Present Perfect'},
+      ...(l ? [{name:'status', label:'Статус', type:'seg', options:Object.entries(STATUS)}, {name:'note', label:'Нотатка після заняття', type:'textarea', optional:true, rows:2}] : [])
+    ],
+    danger: l ? {label:'Видалити', onClick: () => { closeSheet(); deleteLesson(l.id); }} : null,
+    onSubmit: v => {
+      const data = {...v, duration: Number(v.duration) || 60};
+      const c = findConflict(data, l && l.id);
+      if (c && data.status !== 'cancelled'){
+        const cs = student(c.studentId);
+        return {time: `Перетинається з уроком ${c.time}–${hm(lessonEnd(c))}${cs ? ' · ' + cs.name : ''}`};
+      }
+      if (l){ Object.assign(l, data); touch(l.studentId); save(); toast('Урок оновлено'); }
+      else { const n = {id:uid(), status:'planned', note:'', ...data}; state.lessons.push(n); touch(n.studentId); save(); toast(`Урок додано: ${relDay(n.date).toLowerCase()} о ${n.time}`); }
+      render();
+    }
+  });
+}
+function deleteLesson(id){
+  const snap = snapshot();
+  state.lessons = state.lessons.filter(l => l.id!==id); save(); render();
+  toast('Урок видалено', {undo: () => restore(snap)});
+}
+function setLessonStatus(id, status, note){
+  const l = state.lessons.find(x => x.id===id); if (!l) return;
+  const prev = {status:l.status, note:l.note};
+  l.status = status; if (note !== undefined) l.note = note;
+  touch(l.studentId); save(); render(); haptic();
+  toast(status==='done' ? 'Заняття позначено як проведене' : status==='cancelled' ? 'Заняття скасовано' : 'Заняття знову заплановане', {undo: () => { Object.assign(l, prev); save(); render(); }});
+}
+
+/* Деталі уроку з діями: провести (з нотаткою), перенести, скасувати */
+function lessonSheet(id, mode=''){
+  const l = state.lessons.find(x => x.id===id); if (!l) return;
+  const s = student(l.studentId) || {name:'Учня видалено', lang:'', level:''};
+  const end = hm(lessonEnd(l));
+  let actions = '';
+  if (mode === 'done'){
+    actions = `<form id="done-form" class="form-grid" style="margin-top:18px"><div class="field"><label for="ln">Нотатка після заняття <span class="opt">· необов’язково</span></label><textarea id="ln" rows="3" placeholder="Що вдалося, над чим працювати далі?" autofocus>${esc(l.note)}</textarea></div>
+      <div class="field" style="flex-direction:row;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-quiet" data-back>Назад</button><button class="btn btn-primary">${ic('check')} Зберегти</button></div></form>`;
+  } else if (mode === 'move'){
+    actions = `<form id="move-form" class="form-grid" style="margin-top:18px" novalidate>
+      <div class="field half" data-field="date"><label for="md">Нова дата</label><input id="md" type="date" value="${l.date}" required><div class="err"></div></div>
+      <div class="field half" data-field="time"><label for="mt">Новий час</label><input id="mt" type="time" value="${l.time}" required><div class="err"></div></div>
+      <div class="field" style="flex-direction:row;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-quiet" data-back>Назад</button><button class="btn btn-primary">Перенести</button></div></form>`;
+  } else if (l.status === 'planned'){
+    actions = `<div class="action-grid"><button class="btn btn-primary" data-m="done">${ic('check')} Проведено</button><button class="btn btn-ghost" data-m="move">${ic('clock')} Перенести</button><button class="btn btn-ghost" data-cancel-lesson>${ic('x')} Скасувати</button></div>`;
+  } else if (l.status === 'done'){
+    actions = `<div class="action-grid"><button class="btn btn-ghost" data-m="done">${ic('note')} ${l.note ? 'Змінити нотатку' : 'Додати нотатку'}</button><button class="btn btn-quiet" data-replan>Повернути в заплановані</button></div>`;
+  } else {
+    actions = `<div class="action-grid"><button class="btn btn-ghost" data-replan>Відновити заняття</button><button class="btn btn-ghost" data-m="move">${ic('clock')} Перенести на іншу дату</button></div>`;
+  }
+  const body = `<dl class="detail-list">
+      <dt>Учень</dt><dd>${student(l.studentId) ? `<a class="link" href="#students/${l.studentId}" data-close-nav>${esc(s.name)}</a>` : esc(s.name)} <span style="color:var(--muted)">${esc([s.lang,s.level].filter(Boolean).join(' · '))}</span></dd>
+      <dt>Коли</dt><dd>${esc(cap(fmtLong(l.date)))}, ${l.time}–${end}</dd>
+      <dt>Тривалість</dt><dd>${l.duration} хв</dd>
+      ${l.topic ? `<dt>Тема</dt><dd>${esc(l.topic)}</dd>` : ''}
+      <dt>Статус</dt><dd><span class="pill st-${l.status}">${STATUS[l.status]}</span></dd>
+      ${l.request && l.status==='planned' ? `<dt>Запит учня</dt><dd>Перенести${l.request.date ? ' на ' + esc(fmtShort(l.request.date)) + (l.request.time ? ' о ' + esc(l.request.time) : '') : ''}${l.request.text ? ` — «${esc(l.request.text)}»` : ''}</dd>` : ''}
+      ${l.note && mode!=='done' ? `<dt>Нотатка</dt><dd class="prose">${esc(l.note)}</dd>` : ''}
+    </dl>${actions}`;
+  const foot = `<button class="btn btn-danger" data-del>${ic('trash')} Видалити</button><span class="spacer"></span><button class="btn btn-ghost" data-edit>${ic('edit')} Редагувати</button>`;
+  const el = openSheet('Урок', body, {foot});
+  el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => lessonSheet(id, b.dataset.m));
+  el.querySelectorAll('[data-back]').forEach(b => b.onclick = () => lessonSheet(id));
+  el.querySelector('[data-edit]').onclick = () => lessonForm(id);
+  el.querySelector('[data-del]').onclick = () => { closeSheet(); deleteLesson(id); };
+  const cl = el.querySelector('[data-cancel-lesson]'); if (cl) cl.onclick = () => { closeSheet(); setLessonStatus(id, 'cancelled'); };
+  const rp = el.querySelector('[data-replan]'); if (rp) rp.onclick = () => { closeSheet(); setLessonStatus(id, 'planned'); };
+  const nav = el.querySelector('[data-close-nav]'); if (nav) nav.onclick = () => closeSheet(true);
+  const df = el.querySelector('#done-form'); if (df) df.onsubmit = e => { e.preventDefault(); closeSheet(); setLessonStatus(id, 'done', $('#ln', df).value.trim()); };
+  const mf = el.querySelector('#move-form'); if (mf) mf.onsubmit = e => {
+    e.preventDefault();
+    const date = $('#md', mf).value, time = $('#mt', mf).value;
+    mf.querySelectorAll('.field').forEach(x => x.classList.remove('invalid'));
+    const fail = (k, m) => { const x = mf.querySelector(`[data-field="${k}"]`); x.classList.add('invalid'); x.querySelector('.err').textContent = m; };
+    if (!date) return fail('date','Оберіть дату'); if (!time) return fail('time','Оберіть час');
+    const c = findConflict({...l, date, time}, l.id);
+    if (c) return fail('time', `Цей час зайнятий: ${c.time} · ${(student(c.studentId)||{}).name||''}`);
+    const prev = {date:l.date, time:l.time, status:l.status};
+    Object.assign(l, {date, time, status:'planned'}); delete l.request; save(); closeSheet(); render();
+    toast(`Перенесено на ${relDay(date).toLowerCase()} о ${time}`, {undo: () => { Object.assign(l, prev); save(); render(); }});
+  };
+}
+
+function taskForm(id, preset={}){
+  const t = id ? state.tasks.find(x => x.id===id) : null;
+  openForm({
+    title: t ? 'Редагувати завдання' : 'Нове завдання',
+    submit: t ? 'Зберегти' : 'Додати',
+    values: t || {due: todayISO(), studentId: preset.studentId || ''},
+    fields: [
+      {name:'text', label:'Що потрібно зробити', required:true, autofocus:true, placeholder:'Напр. Перевірити домашнє завдання', reqMsg:'Опишіть завдання'},
+      {name:'due', label:'Термін', type:'date', half:true, optional:true},
+      {name:'studentId', label:'Учень', type:'select', options:studentOpts(), empty:'Без учня', half:true, optional:true}
+    ],
+    danger: t ? {label:'Видалити', onClick: () => { closeSheet(); deleteTask(t.id); }} : null,
+    onSubmit: v => {
+      if (t){ Object.assign(t, v); toast('Завдання оновлено'); }
+      else { state.tasks.push({id:uid(), ...v, done:false, created:Date.now()}); toast('Завдання додано'); }
+      save(); render();
+    }
+  });
+}
+function toggleTask(id){
+  const t = state.tasks.find(x => x.id===id); if (!t) return;
+  t.done = !t.done; t.doneAt = t.done ? Date.now() : null;
+  if (t.studentId) touch(t.studentId);
+  save(); render(); if (t.done) haptic();
+  if (t.done) toast('Виконано', {undo: () => { t.done = false; save(); render(); }});
+}
+function deleteTask(id){
+  const snap = snapshot(); state.tasks = state.tasks.filter(t => t.id!==id); save(); render();
+  toast('Завдання видалено', {undo: () => restore(snap)});
+}
+function noteForm(sid){
+  openForm({
+    title:'Швидка нотатка',
+    submit:'Зберегти нотатку',
+    values:{studentId: sid || ''},
+    fields:[
+      {name:'studentId', label:'Учень', type:'select', options:studentOpts(), empty:'Оберіть учня', required:true, reqMsg:'Оберіть учня'},
+      {name:'text', label:'Нотатка', type:'textarea', rows:4, required:true, placeholder:'Що помітили на занятті?', reqMsg:'Напишіть нотатку'}
+    ],
+    onSubmit: v => {
+      const s = student(v.studentId);
+      s.notes.unshift({id:uid(), date:todayISO(), text:v.text}); s.touched = Date.now();
+      save(); toast(`Нотатку для ${s.name} збережено`); render();
+    }
+  });
+}
+
+const PLAN_FIELDS = [
+  {name:'title', label:'Назва уроку', required:true, autofocus:true, reqMsg:'Дайте уроку назву'},
+  {name:'lang', label:'Мова', type:'select', options:LANGS, empty:'Будь-яка', half:true},
+  {name:'level', label:'Рівень', type:'select', options:LEVELS, empty:'Будь-який', half:true},
+  {type:'section', label:'Структура уроку'},
+  {name:'topic', label:'Тема', optional:true},
+  {name:'goal', label:'Мета', type:'textarea', rows:2, optional:true, placeholder:'Що учень зможе після уроку?'},
+  {name:'vocab', label:'Нова лексика', type:'textarea', rows:2, optional:true, half:true},
+  {name:'grammar', label:'Граматика', type:'textarea', rows:2, optional:true, half:true},
+  {name:'practice', label:'Практичні вправи', type:'textarea', rows:4, optional:true},
+  {name:'homework', label:'Домашнє завдання', type:'textarea', rows:2, optional:true},
+  {name:'after', label:'Нотатки після уроку', type:'textarea', rows:2, optional:true, placeholder:'Що спрацювало, що змінити наступного разу'},
+  {name:'isTemplate', label:'Зберегти як шаблон', type:'checkbox', hint:'Шаблони можна копіювати для нових уроків'}
+];
+function planForm(id, from){
+  const p = id ? state.plans.find(x => x.id===id) : null;
+  const values = p || (from ? {...from, id:undefined, isTemplate:false, after:'', title: from.isTemplate ? '' : from.title + ' (копія)'} : {});
+  openForm({
+    title: p ? 'План уроку' : from ? (from.isTemplate ? `Новий урок за шаблоном` : 'Копія уроку') : 'Новий план уроку',
+    intro: from && from.isTemplate ? `<p class="result-note">Шаблон «${esc(from.title)}» скопійовано — відредагуйте під конкретного учня.</p>` : '',
+    submit: p ? 'Зберегти' : 'Створити',
+    wide:true, values, fields: PLAN_FIELDS,
+    danger: p ? {label:'Видалити', onClick: () => { closeSheet(); deletePlan(p.id); }} : null,
+    onSubmit: v => {
+      if (p){ Object.assign(p, v, {updated:Date.now()}); toast('План уроку збережено'); }
+      else { state.plans.unshift({id:uid(), ...v, updated:Date.now()}); toast(v.isTemplate ? 'Шаблон створено' : 'Урок створено'); }
+      save(); render();
+    }
+  });
+}
+function deletePlan(id){
+  const snap = snapshot(); state.plans = state.plans.filter(p => p.id!==id); save(); render();
+  toast('План видалено', {undo: () => restore(snap)});
+}
+function newPlanChooser(){
+  const tpls = state.plans.filter(p => p.isTemplate);
+  const body = `<p class="result-note">Почніть з шаблону, щоб не заповнювати структуру з нуля.</p>
+    <ul class="rows panel">${tpls.map(t => `<li><button class="row" data-tpl="${t.id}"><span class="row-main"><span class="row-title">${esc(t.title)}</span><span class="row-meta">${esc(t.goal || t.topic)}</span></span>${ic('right')}</button></li>`).join('')}
+    <li><button class="row" data-blank><span class="row-main"><span class="row-title">Порожній урок</span><span class="row-meta">Лише структура без заповнення</span></span>${ic('right')}</button></li></ul>`;
+  const el = openSheet('Новий урок', body);
+  el.querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => planForm(null, state.plans.find(p => p.id===b.dataset.tpl)));
+  el.querySelector('[data-blank]').onclick = () => planForm();
+}
+
+function readFile(file){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+}
+function materialForm(id){
+  const m = id ? state.materials.find(x => x.id===id) : null;
+  openForm({
+    title: m ? 'Редагувати матеріал' : 'Новий матеріал',
+    submit: m ? 'Зберегти' : 'Додати',
+    values: m ? {...m, kind: m.file ? 'file' : 'link'} : {kind:'link', lang:'Англійська'},
+    fields: [
+      {name:'title', label:'Назва', required:true, autofocus:true, reqMsg:'Вкажіть назву'},
+      {name:'kind', label:'Тип', type:'seg', options:[['link','Посилання'],['file','Файл']]},
+      {name:'url', label:'Посилання', type:'url', placeholder:'https://…', optional:true, hint:'Для типу «Посилання»'},
+      {name:'file', label:'Файл', type:'file', optional:true, hint: m && m.file ? `Зараз: ${m.file.name}. Файли до 300 КБ зберігаються в браузері.` : 'Файли до 300 КБ зберігаються в браузері, більші — лише назва.'},
+      {name:'lang', label:'Мова', type:'select', options:LANGS, half:true},
+      {name:'level', label:'Рівень', type:'select', options:LEVELS, empty:'Будь-який', half:true},
+      {name:'skill', label:'Навичка', type:'select', options:SKILLS, empty:'—', half:true},
+      {name:'topic', label:'Тема', optional:true, half:true}
+    ],
+    danger: m ? {label:'Видалити', onClick: () => { closeSheet(); deleteMaterial(m.id); }} : null,
+    onSubmit: async v => {
+      let file = m ? m.file : null;
+      if (v.kind === 'link'){
+        if (!/^https?:\/\/\S+\.\S+/.test(v.url)) return {url: v.url ? 'Посилання має починатися з http:// або https://' : 'Додайте посилання'};
+        file = null;
+      } else {
+        if (v.file){
+          file = {name:v.file.name, size:v.file.size};
+          if (v.file.size <= 300*1024){ try { file.data = await readFile(v.file); } catch(e){ return {file:'Не вдалося прочитати файл'}; } }
+        }
+        if (!file) return {file:'Оберіть файл'};
+      }
+      const data = {title:v.title, url: v.kind==='link' ? v.url : '', file, lang:v.lang, level:v.level, skill:v.skill, topic:v.topic};
+      const snap = snapshot();
+      if (m) Object.assign(m, data); else state.materials.unshift({id:uid(), ...data});
+      if (!save()){ state = JSON.parse(snap); return {file:'Файл завеликий для збереження в браузері'}; }
+      toast(m ? 'Матеріал оновлено' : 'Матеріал додано'); render();
+    }
+  });
+  const el = sheetEl, sync = () => {
+    const k = (el.querySelector('input[name=kind]:checked')||{}).value;
+    el.querySelector('[data-field=url]').style.display = k==='link' ? '' : 'none';
+    el.querySelector('[data-field=file]').style.display = k==='file' ? '' : 'none';
+  };
+  el.querySelectorAll('input[name=kind]').forEach(r => r.onchange = sync); sync();
+}
+function deleteMaterial(id){
+  const snap = snapshot();
+  state.materials = state.materials.filter(m => m.id!==id);
+  state.students.forEach(s => s.materialIds = s.materialIds.filter(x => x!==id));
+  save(); render(); toast('Матеріал видалено', {undo: () => restore(snap)});
+}
+function openMaterial(id){
+  const m = state.materials.find(x => x.id===id); if (!m) return;
+  if (m.url){ window.open(m.url, '_blank', 'noopener'); return; }
+  if (m.file && m.file.data){ const a = document.createElement('a'); a.href = m.file.data; a.download = m.file.name; a.click(); return; }
+  toast('Це демо-файл або файл, більший за 300 КБ — збережено лише назву', {error:true});
+}
+function attachMaterial(sid){
+  const s = student(sid), avail = state.materials.filter(m => !s.materialIds.includes(m.id));
+  if (!avail.length){ toast('Усі матеріали вже додано. Створіть новий у розділі «Матеріали»'); return; }
+  openForm({
+    title:'Додати матеріал учню', submit:'Додати',
+    fields:[{name:'mid', label:'Матеріал з бібліотеки', type:'select', options: avail.map(m => [m.id, m.title + (m.level ? ' · ' + m.level : '')]), empty:'Оберіть матеріал', required:true, reqMsg:'Оберіть матеріал'}],
+    onSubmit: v => { s.materialIds.push(v.mid); s.touched = Date.now(); save(); toast('Матеріал додано до профілю'); render(); }
+  });
+}
+
+function addMenu(){
+  const items = [
+    ['student','users','Учня','Ім’я, мова, рівень — 20 секунд'],
+    ['lesson','calendar','Урок у розклад','Обрати учня, дату й час'],
+    ['task','tasks','Завдання','Нагадування для себе'],
+    ['note','note','Нотатку','Швидко записати думку про учня']
+  ];
+  const el = openSheet('Що додати?', `<div class="menu-grid">${items.map(([k,i,t,d]) => `<button class="menu-item" data-k="${k}"><span class="ic">${ic(i)}</span><span><b>${t}</b><br><small>${d}</small></span></button>`).join('')}</div>`);
+  el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => ({student:()=>studentForm(), lesson:()=>lessonForm(null,{date:todayISO()}), task:()=>taskForm(), note:()=>noteForm()})[b.dataset.k]());
+}
+function settingsSheet(){
+  openForm({
+    title:'Налаштування', submit:'Зберегти',
+    values: state.settings,
+    fields:[
+      {name:'name', label:'Як до вас звертатися', placeholder:'Напр. Ганно', hint:'Використовується у привітанні на головній'},
+      {name:'bot', label:'Ім’я бота в Telegram', optional:true, placeholder:'Напр. MyTeacherBot', hint:'Потрібне для посилань-запрошень учнів у Telegram'},
+      {name:'theme', label:'Тема', type:'seg', options:[['system','Як у системі'],['light','Світла'],['dark','Темна']]}
+    ],
+    intro: cloud.on && cloud.me ? `<p class="result-note" style="font-size:14px">Ваш Telegram ID: <b>${esc(cloud.me.id)}</b>. Додайте його в секрет TEACHER_IDS у Supabase, щоб кабінет викладача відкривався лише вам.</p>` : '',
+    onSubmit: v => { state.settings.name = v.name; state.settings.bot = v.bot.replace(/^@/, ''); state.settings.theme = v.theme || 'system'; applyTheme(); save(); toast('Налаштування збережено'); render(); }
+  });
+  const foot = sheetEl.querySelector('.sheet-foot');
+  const reset = document.createElement('button');
+  reset.className = 'btn btn-danger'; reset.type = 'button'; reset.textContent = cloud.on ? 'Дані…' : 'Скинути до демо-даних';
+  reset.onclick = () => cloud.on ? dataSheet() : confirmSheet('Скинути дані?', 'Усі ваші зміни буде замінено демонстраційними даними.', 'Скинути', () => {
+    const snap = snapshot(); state = seed(); save(); applyTheme(); render(); toast('Демо-дані відновлено', {undo: () => restore(snap)});
+  });
+  foot.prepend(reset);
+}
+function dataSheet(){
+  const el = openSheet('Дані кабінету', `<p class="result-note" style="font-size:14px">Дані зберігаються в базі й доступні з будь-якого вашого пристрою в Telegram.</p><div class="action-grid"><button class="btn btn-ghost" data-demo>Завантажити демо-дані</button><button class="btn btn-danger" data-clear>Очистити все</button></div>`);
+  const swap = (title, text, make) => confirmSheet(title, text, 'Так, замінити', () => { const snap = snapshot(); state = make(); save(); applyTheme(); render(); toast('Готово', {undo: () => restore(snap)}); });
+  el.querySelector('[data-demo]').onclick = () => swap('Завантажити демо-дані?', 'Ваших учнів, розклад і матеріали буде замінено прикладом. Запрошення учнів перестануть працювати.', () => Object.assign(seed(), {settings:{...state.settings}}));
+  el.querySelector('[data-clear]').onclick = () => swap('Очистити кабінет?', 'Буде видалено всіх учнів, уроки, матеріали й завдання. Шаблони уроків залишаться.', () => Object.assign(emptyWorkspace(), {settings:{...state.settings}}));
+}
+
+/* ========== Тема ========== */
+function effectiveDark(){
+  const t = state.settings.theme;
+  if (t === 'dark') return true; if (t === 'light') return false;
+  try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) return Telegram.WebApp.colorScheme === 'dark'; } catch(e){}
+  return matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function applyTheme(){
+  const t = state.settings.theme;
+  let attr = t === 'system' ? null : t;
+  try { if (t==='system' && window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) attr = Telegram.WebApp.colorScheme; } catch(e){}
+  if (attr) document.documentElement.setAttribute('data-theme', attr); else document.documentElement.removeAttribute('data-theme');
+  const dark = effectiveDark();
+  ['#theme-btn-side','#theme-btn-top'].forEach(s => { const b = $(s); b.innerHTML = ic(dark ? 'sun' : 'moon'); b.setAttribute('aria-label', dark ? 'Світла тема' : 'Темна тема'); b.title = b.getAttribute('aria-label'); });
+  try { const bg = getComputedStyle(document.body).backgroundColor; Telegram.WebApp.setHeaderColor && Telegram.WebApp.initData && Telegram.WebApp.setHeaderColor(bg); Telegram.WebApp.setBackgroundColor && Telegram.WebApp.initData && Telegram.WebApp.setBackgroundColor(bg); } catch(e){}
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+/* ========== Навігація ========== */
+const STUDENT_NAV = [
+  ['home','Головна','Головна','home'],
+  ['schedule','Мої уроки','Уроки','calendar'],
+  ['homework','Домашні','Домашні','tasks'],
+  ['materials','Матеріали','Матеріали','book']
+];
+const NAV = [
+  ['home','Головна','Головна','home'],
+  ['students','Учні','Учні','users'],
+  ['schedule','Розклад','Розклад','calendar'],
+  ['library','Уроки й матеріали','Уроки','book'],
+  ['tasks','Завдання','Завдання','tasks']
+];
+function route(){ const h = location.hash.replace(/^#\/?/, ''); const [r, id] = h.split('/'); return {r: nav().some(n => n[0]===r) ? r : 'home', id: isStudent() ? undefined : id}; }
+const nav = () => isStudent() ? STUDENT_NAV : NAV;
+function renderNav(){
+  const {r} = route(), open = openTasks().length, todayCount = lessonsOn(todayISO()).filter(l => l.status!=='cancelled').length;
+  const s0 = isStudent() ? me() : null;
+  const counts = isStudent() ? {homework: s0 ? s0.homework.filter(h => !h.done).length || '' : ''} : {tasks: open || '', schedule: todayCount || ''};
+  $('#side-title').textContent = isStudent() ? 'Мої заняття' : 'Кабінет викладача';
+  $('#top-title').textContent = isStudent() ? 'Заняття' : 'Кабінет';
+  $('#bottom-nav').style.setProperty('--n', nav().length);
+  $('#side-nav').innerHTML = nav().map(([k,l,,i]) => `<a class="nav-link" href="#${k}"${r===k?' aria-current="page"':''}>${ic(i)}<span>${l}</span>${counts[k] ? `<span class="count" aria-label="${k==='schedule'?'уроків сьогодні':'відкритих завдань'}: ${counts[k]}">${counts[k]}</span>` : ''}</a>`).join('');
+  $('#bottom-nav').innerHTML = nav().map(([k,,s,i]) => `<a href="#${k}"${r===k?' aria-current="page"':''}>${ic(i)}<span>${s}</span></a>`).join('');
+  $('#side-name').textContent = isStudent() ? (s0 ? s0.name : '') : state.students.length + ' ' + plural(state.students.length, ['учень','учні','учнів']);
+  const n = upcoming();
+  const pill = n ? (() => { const s = student(n.studentId); const live = lessonStart(n) <= new Date(); const who = isStudent() ? 'урок' : (s ? s.name.split(' ')[0] : ''); return `<button class="next-pill${live?' live':''}" data-act="${isStudent() ? 'my-lesson' : 'lesson'}" data-id="${n.id}" aria-label="Найближчий урок: ${esc(who)}, ${relTime(n)}"><span class="dot"></span><span><b>${n.time}</b> · ${esc(who)} · ${relTime(n)}</span></button>`; })() : `<div class="next-pill" style="color:var(--muted)"><span>Найближчих уроків немає</span></div>`;
+  $('#side-next').innerHTML = pill; $('#top-next').innerHTML = pill;
+}
+
+/* ========== Сторінки ========== */
+function lessonRow(l, {showDate=false, quick=true}={}){
+  const s = student(l.studentId) || {name:'Учня видалено', lang:'', level:''};
+  const canQuick = quick && l.status==='planned' && lessonStart(l) <= new Date();
+  return `<li style="display:flex;align-items:center"><button class="row" data-act="lesson" data-id="${l.id}" style="flex:1">
+      <span class="time-col">${l.time}<small>${showDate ? relDay(l.date) : hm(lessonEnd(l))}</small></span>
+      <span class="row-main"><span class="row-title">${esc(s.name)}</span><span class="row-meta">${esc([s.lang, s.level, l.duration + ' хв', l.topic].filter(Boolean).join(' · '))}</span></span>
+      ${l.request && l.status==='planned' ? '<span class="tag hide-sm">Запит на перенесення</span>' : ''}<span class="pill st-${l.status}">${STATUS[l.status]}</span></button>
+      ${canQuick ? `<button class="quick-done" style="margin-right:14px" data-act="lesson-done" data-id="${l.id}" aria-label="Позначити проведеним" title="Позначити проведеним">${ic('check')}</button>` : ''}</li>`;
+}
+function taskRow(t){
+  const s = t.studentId ? student(t.studentId) : null, d = t.due ? dayDiff(t.due) : null;
+  const due = t.due ? `<span class="${!t.done && d<0 ? 'overdue' : ''}">${d<0 && !t.done ? 'Прострочено · ' + fmtShort(t.due) : relDay(t.due)}</span>` : '';
+  return `<li class="task-row"><button class="check${t.done?' on':''}" data-act="task-toggle" data-id="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="${t.done?'Позначити невиконаним':'Позначити виконаним'}: ${esc(t.text)}">${ic('check')}</button>
+    <span class="row-main" data-act="task-edit" data-id="${t.id}"><span class="row-title ${t.done?'done-text':''}" style="white-space:normal">${esc(t.text)}</span><span class="row-meta">${[due, s ? esc(s.name) : ''].filter(Boolean).join(' · ')}</span></span>
+    <button class="icon-btn task-edit" data-act="task-edit" data-id="${t.id}" aria-label="Редагувати завдання">${ic('edit')}</button></li>`;
+}
+const empty = (title, text, btn) => `<div class="empty"><b>${title}</b>${text}${btn || ''}</div>`;
+
+function viewHome(){
+  const h = new Date().getHours();
+  const hello = h < 5 ? 'Доброї ночі' : h < 12 ? 'Добрий ранок' : h < 18 ? 'Добрий день' : 'Добрий вечір';
+  const today = lessonsOn(todayISO()), active = today.filter(l => l.status!=='cancelled');
+  const due = openTasks().filter(t => t.due && dayDiff(t.due) <= 0).sort((a,b) => a.due.localeCompare(b.due));
+  const n = upcoming();
+  const recent = state.students.slice().sort((a,b) => (b.touched||0)-(a.touched||0)).slice(0,4);
+  let focus;
+  if (n){
+    const s = student(n.studentId) || {name:'—'};
+    focus = `<div class="panel focus"><div class="focus-time">${n.time}</div><div class="focus-body"><div class="focus-label">Наступний урок · ${relTime(n)}</div><div class="focus-name">${esc(s.name)}</div><div class="row-meta">${esc([s.lang, s.level, n.duration+' хв', n.topic].filter(Boolean).join(' · '))}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-ghost" href="#students/${n.studentId}">Профіль</a><button class="btn btn-ghost" data-act="lesson" data-id="${n.id}">Деталі уроку</button></div></div>`;
+  } else focus = `<div class="panel">${empty('Запланованих уроків немає','Додайте урок у розклад — він з’явиться тут.', '<br><button class="btn btn-ghost" data-act="add-lesson">+ Урок</button>')}</div>`;
+  const summary = `Сьогодні ${active.length ? `${active.length} ${plural(active.length,['урок','уроки','уроків'])}` : 'без уроків'}${due.length ? ` і ${due.length} ${plural(due.length,['завдання','завдання','завдань'])}` : ''}.`;
+  return `<div class="page">
+    <div class="page-head"><div><p class="eyebrow">${esc(cap(fmtLong(todayISO())))}</p><h1>${hello}${state.settings.name ? ', ' + esc(state.settings.name) : ''}</h1><p class="lede">${summary}</p></div>
+      <button class="btn btn-primary" data-act="add">${ic('plus')} Додати</button></div>
+    ${focus}
+    <div class="grid-2">
+      <section class="section"><div class="section-head"><h2>Уроки сьогодні · ${active.length}</h2><a class="link" href="#schedule" data-act="sched-today">Розклад</a></div>
+        ${today.length ? `<ul class="rows panel">${today.map(l => lessonRow(l)).join('')}</ul>` : `<div class="panel">${empty('Сьогодні вільний день','Можна підготувати матеріали або відпочити.')}</div>`}
+      </section>
+      <div>
+        <section class="section"><div class="section-head"><h2>Завдання на сьогодні</h2><a class="link" href="#tasks">Усі</a></div>
+          ${due.length ? `<ul class="rows panel">${due.slice(0,5).map(taskRow).join('')}</ul>${due.length>5 ? `<p class="result-note" style="margin-top:8px">І ще ${due.length-5} — у розділі «Завдання»</p>` : ''}` : `<div class="panel">${empty('Усе виконано', 'На сьогодні завдань немає.', '<br><button class="btn btn-ghost btn-sm" data-act="add-task">+ Завдання</button>')}</div>`}
+        </section>
+        <section class="section"><div class="section-head"><h2>Останні учні</h2><a class="link" href="#students">Усі</a></div>
+          ${recent.length ? `<ul class="rows panel">${recent.map(s => `<li><a class="row" href="#students/${s.id}">${avatar(s)}<span class="row-main"><span class="row-title">${esc(s.name)}</span><span class="row-meta">${esc(s.lang)} · ${esc(s.level)}</span></span><span class="progress"><span class="bar"><i style="width:${s.progress}%"></i></span>${s.progress}%</span></a></li>`).join('')}</ul>` : `<div class="panel">${empty('Ще немає учнів','', '<br><button class="btn btn-ghost btn-sm" data-act="add-student">+ Учень</button>')}</div>`}
+        </section>
+      </div>
+    </div></div>`;
+}
+
+function filteredStudents(){
+  const {q, lang, level, format} = ui.st, qq = q.toLowerCase();
+  return state.students.filter(s => (!qq || (s.name + ' ' + s.lang + ' ' + (s.summary||'')).toLowerCase().includes(qq)) && (!lang || s.lang===lang) && (!level || s.level===level) && (!format || s.format===format))
+    .sort((a,b) => a.name.localeCompare(b.name,'uk'));
+}
+function studentListHTML(){
+  const list = filteredStudents(), any = ui.st.q || ui.st.lang || ui.st.level || ui.st.format;
+  if (!state.students.length) return `<div class="panel">${empty('Тут з’являться ваші учні','Додайте першого учня — це займе 20 секунд.', '<br><button class="btn btn-primary" data-act="add-student">+ Додати учня</button>')}</div>`;
+  if (!list.length) return `<div class="panel">${empty('Нікого не знайдено','Спробуйте змінити пошук або фільтри.', '<br><button class="btn btn-ghost" data-act="st-reset">Скинути фільтри</button>')}</div>`;
+  return `<p class="result-note">${list.length} ${plural(list.length,['учень','учні','учнів'])}${any ? ` з ${state.students.length} · <button class="link" data-act="st-reset">скинути фільтри</button>` : ''}</p>
+    <ul class="rows panel">${list.map(s => { const n = nextLessonOf(s.id); return `<li><a class="row" href="#students/${s.id}">${avatar(s)}
+      <span class="row-main"><span class="row-title">${esc(s.name)}</span><span class="row-meta">${esc(s.lang)} · ${esc(s.level)} · ${esc(s.format)}${s.summary ? ' — ' + esc(s.summary) : ''}</span></span>
+      <span class="row-side"><span class="hide-sm" style="text-align:right;min-width:92px">${n ? `${relDay(n.date)}, ${n.time}` : '<span style="color:var(--faint)">Без уроку</span>'}</span><span class="progress" aria-label="Прогрес ${s.progress}%"><span class="bar"><i style="width:${s.progress}%"></i></span>${s.progress}%</span></span></a></li>`; }).join('')}</ul>`;
+}
+function viewStudents(){
+  const sel = (key, label, opts) => `<select class="input filter-select" data-filter="${key}" aria-label="${label}"><option value="">${label}: усі</option>${opts.map(o => `<option${ui.st[key]===o?' selected':''}>${o}</option>`).join('')}</select>`;
+  const langs = LANGS.filter(l => state.students.some(s => s.lang===l));
+  return `<div class="page">
+    <div class="page-head"><div><h1>Учні</h1><p class="lede">Профілі, прогрес і нотатки.</p></div><button class="btn btn-primary" data-act="add-student">${ic('plus')} Учень</button></div>
+    <div class="toolbar"><label class="search"><span class="sr">Пошук учнів</span>${ic('search')}<input class="input" id="st-q" type="search" placeholder="Пошук за ім’ям, мовою або нотаткою" value="${esc(ui.st.q)}"></label>
+      ${sel('lang','Мова',langs)}${sel('level','Рівень',LEVELS)}${sel('format','Формат',FORMATS)}</div>
+    <div id="st-list">${studentListHTML()}</div></div>`;
+}
+
+function viewProfile(id){
+  const s = student(id);
+  if (!s) return `<div class="page"><a class="back" href="#students">${ic('left')} Учні</a><div class="panel">${empty('Учня не знайдено','Можливо, профіль було видалено.')}</div></div>`;
+  const all = state.lessons.filter(l => l.studentId===id);
+  const past = all.filter(l => lessonStart(l) <= new Date() || l.status!=='planned').sort((a,b) => lessonStart(b)-lessonStart(a));
+  const done = all.filter(l => l.status==='done').length;
+  const n = nextLessonOf(id), tab = ui.profileTab;
+  const hwOpen = s.homework.filter(h => !h.done).length;
+  const tabs = [['overview','Огляд'],['history',`Заняття · ${done}`],['homework',`Домашні${hwOpen ? ' · ' + hwOpen : ''}`],['materials',`Матеріали · ${s.materialIds.length}`],['notes',`Нотатки · ${s.notes.length}`]];
+  let content = '';
+  if (tab==='overview'){
+    content = `<div class="panel stat-line"><div class="stat"><div class="k">Наступний урок</div><div class="v">${n ? `${relDay(n.date)}, ${n.time}` : '—'}</div></div><div class="stat"><div class="k">Проведено занять</div><div class="v">${done}</div></div><div class="stat"><div class="k">Формат</div><div class="v">${esc(s.format)}</div></div></div>
+      <section class="section"><div class="section-head"><h2>Прогрес</h2><div class="stepper"><button data-act="prog" data-d="-5" aria-label="Зменшити прогрес">−</button><button data-act="prog" data-d="5" aria-label="Збільшити прогрес">+</button></div></div>
+        <div class="panel" style="padding:18px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><span>${esc(s.level)} → ${esc(LEVELS[Math.min(LEVELS.indexOf(s.level)+1, LEVELS.length-1)])}</span><b style="font-variant-numeric:tabular-nums">${s.progress}%</b></div><div class="bar lg" role="progressbar" aria-valuenow="${s.progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Прогрес рівня"><i style="width:${s.progress}%"></i></div>${s.summary ? `<p class="row-meta" style="white-space:normal;margin:12px 0 0">${esc(s.summary)}</p>` : ''}</div></section>
+      <section class="section"><div class="section-head"><h2>Цілі</h2><button class="link" data-act="edit-student" data-id="${id}">Змінити</button></div>
+        <div class="panel" style="padding:18px">${s.goals ? `<p class="prose">${esc(s.goals)}</p>` : '<span style="color:var(--muted)">Цілі ще не вказано.</span>'}</div></section>`;
+  } else if (tab==='history'){
+    content = past.length ? `<ul class="rows panel">${past.map(l => lessonRow(l, {showDate:true, quick:false})).join('')}</ul>` : `<div class="panel">${empty('Занять ще не було','Історія з’явиться після першого уроку.')}</div>`;
+    const withNotes = past.filter(l => l.note).slice(0,5);
+    if (withNotes.length) content += `<section class="section"><div class="section-head"><h2>Нотатки після занять</h2></div><ul class="rows panel">${withNotes.map(l => `<li class="note-item"><time>${esc(fmtShort(l.date))} · ${esc(l.topic||'')}</time><p class="prose">${esc(l.note)}</p></li>`).join('')}</ul></section>`;
+  } else if (tab==='homework'){
+    content = `<div class="panel"><ul class="rows">${s.homework.map(h => `<li class="task-row"><button class="check${h.done?' on':''}" data-act="hw-toggle" data-id="${h.id}" role="checkbox" aria-checked="${h.done}" aria-label="${esc(h.text)}">${ic('check')}</button><span class="row-main"><span class="row-title ${h.done?'done-text':''}" style="white-space:normal">${esc(h.text)}</span></span><button class="icon-btn" data-act="hw-del" data-id="${h.id}" aria-label="Видалити завдання">${ic('trash')}</button></li>`).join('') || `<li>${empty('Домашніх завдань немає','Додайте перше нижче.').replace('class="empty"','class="empty sm"')}</li>`}</ul>
+      <form class="inline-add" data-form="hw"><label class="sr" for="hw-in">Нове домашнє завдання</label><input class="input" id="hw-in" placeholder="Нове домашнє завдання"><button class="btn btn-ghost">Додати</button></form></div>`;
+  } else if (tab==='materials'){
+    const mats = s.materialIds.map(mid => state.materials.find(m => m.id===mid)).filter(Boolean);
+    content = `<div class="section-head"><span></span><button class="btn btn-ghost btn-sm" data-act="attach" data-id="${id}">${ic('plus')} Додати з бібліотеки</button></div>
+      ${mats.length ? `<ul class="rows panel">${mats.map(m => `<li style="display:flex;align-items:center"><button class="row" data-act="mat-open" data-id="${m.id}" style="flex:1">${ic(m.url ? 'link' : 'file')}<span class="row-main"><span class="row-title">${esc(m.title)}</span><span class="row-meta">${esc([m.skill, m.level, m.topic].filter(Boolean).join(' · '))}</span></span></button><button class="icon-btn" style="margin-right:10px" data-act="mat-detach" data-id="${m.id}" aria-label="Прибрати з профілю">${ic('x')}</button></li>`).join('')}</ul>` : `<div class="panel">${empty('Матеріалів ще немає','Прикріпіть посилання чи файли з бібліотеки.')}</div>`}`;
+  } else {
+    content = `<div class="panel"><form data-form="note" style="padding:14px;display:flex;flex-direction:column;gap:8px"><label class="sr" for="note-in">Нова нотатка</label><textarea class="input" id="note-in" rows="2" style="height:auto;padding:10px 12px" placeholder="Швидка нотатка про учня…"></textarea><div style="display:flex;justify-content:flex-end"><button class="btn btn-ghost btn-sm">Зберегти нотатку</button></div></form>
+      <ul class="rows" style="border-top:1px solid var(--line)">${s.notes.map(x => `<li class="note-item" style="display:flex;gap:10px"><div style="flex:1;min-width:0"><time>${esc(fmtShort(x.date))}</time><p class="prose">${esc(x.text)}</p></div><button class="icon-btn" data-act="note-del" data-id="${x.id}" aria-label="Видалити нотатку">${ic('trash')}</button></li>`).join('') || `<li>${empty('Нотаток ще немає','Записуйте спостереження після занять.').replace('class="empty"','class="empty sm"')}</li>`}</ul></div>`;
+  }
+  return `<div class="page"><a class="back" href="#students">${ic('left')} Учні</a>
+    <div class="profile-head">${avatar(s, true)}<div class="grow"><h1>${esc(s.name)}</h1><p class="lede" style="margin-top:4px">${esc(s.lang)} · ${esc(s.level)} · ${esc(s.format)}${s.tg ? ' · підключено в Telegram' : ''}</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" data-act="invite" data-id="${id}">${ic('link')} Запросити</button><button class="btn btn-ghost" data-act="edit-student" data-id="${id}">${ic('edit')} Редагувати</button><button class="btn btn-primary" data-act="add-lesson" data-student="${id}">${ic('plus')} Урок</button></div></div>
+    <div class="tabs" role="tablist">${tabs.map(([k,l]) => `<button class="tab" role="tab" aria-selected="${tab===k}" data-act="ptab" data-k="${k}">${l}</button>`).join('')}</div>
+    <div role="tabpanel">${content}</div></div>`;
+}
+
+function viewSchedule(){
+  const {view, date} = ui.sched, isToday = date === todayISO();
+  let label, body;
+  if (view === 'day'){
+    label = isToday ? 'Сьогодні · ' + fmt(date, {day:'numeric', month:'long'}) : fmtLong(date);
+    const ls = lessonsOn(date);
+    if (!ls.length) body = `<div class="panel">${empty('На цей день уроків немає','Додайте урок або перейдіть до іншого дня.', `<br><button class="btn btn-ghost" data-act="add-lesson">+ Урок на ${esc(relDay(date).toLowerCase())}</button>`)}</div>`;
+    else {
+      const now = new Date(); let placed = !isToday; const items = [];
+      ls.forEach(l => {
+        if (!placed && lessonStart(l) > now){ items.push(`<li class="now-li"><div class="now-line">Зараз · ${hm(now)}</div></li>`); placed = true; }
+        items.push(lessonRow(l));
+      });
+      if (!placed) items.push(`<li class="now-li"><div class="now-line">Зараз · ${hm(now)}</div></li>`);
+      const mins = ls.filter(l => l.status!=='cancelled').reduce((a,l) => a + l.duration, 0);
+      body = `<p class="result-note">${ls.length} ${plural(ls.length,['урок','уроки','уроків'])} · ${Math.floor(mins/60)} год${mins%60 ? ' ' + mins%60 + ' хв' : ''} навантаження</p><ul class="rows panel">${items.join('')}</ul>`;
+    }
+  } else {
+    const ws = weekStart(date), we = addDays(ws, 6);
+    const a = parseDate(ws), b = parseDate(we);
+    label = a.getMonth()===b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${b.toLocaleDateString('uk-UA',{month:'long', day:'numeric'}).replace(/^\d+\s/,'')}` : `${fmt(ws,{day:'numeric',month:'short'})} – ${fmt(we,{day:'numeric',month:'short'})}`;
+    const days = [...Array(7)].map((_, i) => addDays(ws, i));
+    const total = days.reduce((a,d) => a + lessonsOn(d).filter(l => l.status!=='cancelled').length, 0);
+    body = `<p class="result-note">${total} ${plural(total,['урок','уроки','уроків'])} цього тижня · натисніть на день, щоб відкрити його</p><div class="week">${days.map(d => {
+      const ls = lessonsOn(d), td = d===todayISO();
+      return `<div class="day-col${td?' today':''}"><button class="day-head" data-act="open-day" data-d="${d}" aria-label="Відкрити ${esc(fmtLong(d))}"><span class="dn">${esc(cap(fmt(d,{weekday:'short'})))}${td ? ' · сьогодні' : ''}</span><span class="dd">${parseDate(d).getDate()}</span></button>
+        <div class="day-list">${ls.map(l => { const s = student(l.studentId); return `<button class="mini st-${l.status}" data-act="lesson" data-id="${l.id}" aria-label="${l.time}, ${esc(s?s.name:'')}, ${STATUS[l.status]}"><b>${l.time}</b><span>${esc(s ? s.name : '—')}</span></button>`; }).join('') || '<span class="day-empty">Вільно</span>'}</div></div>`;
+    }).join('')}</div>`;
+  }
+  return `<div class="page">
+    <div class="page-head"><div><h1>Розклад</h1><p class="lede">Заняття в часовому порядку.</p></div><button class="btn btn-primary" data-act="add-lesson">${ic('plus')} Урок</button></div>
+    <div class="sched-bar"><div class="seg" role="group" aria-label="Вигляд"><button data-act="sched-view" data-v="day" aria-pressed="${view==='day'}">День</button><button data-act="sched-view" data-v="week" aria-pressed="${view==='week'}">Тиждень</button></div>
+      <span class="date-label" aria-live="polite">${esc(cap(label))}</span>
+      <div style="display:flex;gap:4px"><button class="icon-btn" data-act="sched-move" data-d="-1" aria-label="Попередній ${view==='day'?'день':'тиждень'}">${ic('left')}</button><button class="btn btn-ghost btn-sm" data-act="sched-today"${isToday && view==='day' ? ' disabled' : ''}>Сьогодні</button><button class="icon-btn" data-act="sched-move" data-d="1" aria-label="Наступний ${view==='day'?'день':'тиждень'}">${ic('right')}</button></div></div>
+    ${body}</div>`;
+}
+
+function planListHTML(){
+  const q = ui.lib.q.toLowerCase();
+  const match = p => !q || [p.title, p.topic, p.lang, p.level, p.goal].join(' ').toLowerCase().includes(q);
+  const tpls = state.plans.filter(p => p.isTemplate && match(p)), mine = state.plans.filter(p => !p.isTemplate && match(p)).sort((a,b) => b.updated-a.updated);
+  const row = p => `<li style="display:flex;align-items:center"><button class="row" data-act="plan-open" data-id="${p.id}" style="flex:1"><span class="row-main"><span class="row-title">${esc(p.title)}</span><span class="row-meta">${esc([p.lang, p.level, p.topic].filter(Boolean).join(' · ') || 'Без мови й рівня')}</span></span></button>
+      <span style="display:flex;gap:4px;margin-right:10px">${p.isTemplate ? `<button class="btn btn-ghost btn-sm" data-act="plan-use" data-id="${p.id}">Використати</button>` : `<button class="icon-btn" data-act="plan-dup" data-id="${p.id}" aria-label="Дублювати урок" title="Дублювати">${ic('copy')}</button>`}</span></li>`;
+  return `<section><div class="section-head"><h2>Шаблони · ${tpls.length}</h2></div>${tpls.length ? `<ul class="rows panel">${tpls.map(row).join('')}</ul>` : `<div class="panel">${empty('Шаблонів не знайдено','Позначте будь-який урок як шаблон, щоб він з’явився тут.').replace('class="empty"','class="empty sm"')}</div>`}</section>
+    <section class="section"><div class="section-head"><h2>Мої уроки · ${mine.length}</h2></div>${mine.length ? `<ul class="rows panel">${mine.map(row).join('')}</ul>` : `<div class="panel">${empty(q ? 'Нічого не знайдено' : 'Ще немає планів уроків', q ? 'Спробуйте інший запит.' : 'Створіть урок з шаблону — структура вже готова.', q ? '' : '<br><button class="btn btn-ghost" data-act="plan-new">+ Новий урок</button>')}</div>`}</section>`;
+}
+function materialListHTML(){
+  const {q, skill, level} = ui.lib, qq = q.toLowerCase();
+  const list = state.materials.filter(m => (!qq || [m.title, m.topic, m.lang, m.skill].join(' ').toLowerCase().includes(qq)) && (!skill || m.skill===skill) && (!level || m.level===level));
+  if (!state.materials.length) return `<div class="panel">${empty('Бібліотека порожня','Додайте посилання або файл, щоб мати все під рукою.', '<br><button class="btn btn-primary" data-act="mat-new">+ Матеріал</button>')}</div>`;
+  if (!list.length) return `<div class="panel">${empty('Нічого не знайдено','Змініть навичку, рівень або пошук.', '<br><button class="btn btn-ghost" data-act="lib-reset">Скинути фільтри</button>')}</div>`;
+  return `<p class="result-note">${list.length} ${plural(list.length,['матеріал','матеріали','матеріалів'])}</p><ul class="rows panel">${list.map(m => `<li style="display:flex;align-items:center"><button class="row" data-act="mat-open" data-id="${m.id}" style="flex:1" aria-label="${m.url ? 'Відкрити посилання' : 'Завантажити файл'}: ${esc(m.title)}"><span class="avatar" style="border-radius:9px;color:var(--muted)">${ic(m.url ? 'link' : 'file')}</span><span class="row-main"><span class="row-title">${esc(m.title)}</span><span class="row-meta">${esc([m.lang, m.topic, m.file ? m.file.name + ' · ' + Math.max(1, Math.round(m.file.size/1024)) + ' КБ' : (m.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]].filter(Boolean).join(' · '))}</span></span>
+      <span class="row-side hide-sm">${m.skill ? `<span class="tag">${esc(m.skill)}</span>` : ''}${m.level ? `<span class="tag">${esc(m.level)}</span>` : ''}${ic(m.url ? 'ext' : 'download')}</span></button><button class="icon-btn" style="margin-right:10px" data-act="mat-edit" data-id="${m.id}" aria-label="Редагувати матеріал">${ic('edit')}</button></li>`).join('')}</ul>`;
+}
+function viewLibrary(){
+  const t = ui.lib.tab;
+  const chips = `<div class="chips" role="group" aria-label="Навичка" style="margin-bottom:16px"><button class="chip" data-act="lib-skill" data-v="" aria-pressed="${!ui.lib.skill}">Усі навички</button>${SKILLS.map(s => `<button class="chip" data-act="lib-skill" data-v="${s}" aria-pressed="${ui.lib.skill===s}">${s}</button>`).join('')}</div>`;
+  const levelSel = `<select class="input filter-select" id="lib-level" aria-label="Рівень"><option value="">Рівень: усі</option>${LEVELS.map(l => `<option${ui.lib.level===l?' selected':''}>${l}</option>`).join('')}</select>`;
+  return `<div class="page">
+    <div class="page-head"><div><h1>Уроки й матеріали</h1><p class="lede">Плани занять, шаблони та бібліотека ресурсів.</p></div>
+      ${t==='plans' ? `<button class="btn btn-primary" data-act="plan-new">${ic('plus')} Новий урок</button>` : `<button class="btn btn-primary" data-act="mat-new">${ic('plus')} Матеріал</button>`}</div>
+    <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="${t==='plans'}" data-act="lib-tab" data-v="plans">Плани уроків</button><button class="tab" role="tab" aria-selected="${t==='materials'}" data-act="lib-tab" data-v="materials">Матеріали</button></div>
+    <div class="toolbar"><label class="search"><span class="sr">Пошук</span>${ic('search')}<input class="input" id="lib-q" type="search" placeholder="${t==='plans' ? 'Пошук уроку за назвою чи темою' : 'Пошук матеріалу'}" value="${esc(ui.lib.q)}"></label>${t==='materials' ? levelSel : ''}</div>
+    ${t==='materials' ? chips : ''}
+    <div id="lib-list">${t==='plans' ? planListHTML() : materialListHTML()}</div></div>`;
+}
+
+function viewTasks(){
+  const f = ui.tasks.student, all = state.tasks.filter(t => !f || t.studentId===f);
+  const open = all.filter(t => !t.done).sort((a,b) => (a.due||'9999').localeCompare(b.due||'9999'));
+  const groups = [
+    ['Прострочені', open.filter(t => t.due && dayDiff(t.due) < 0)],
+    ['Сьогодні', open.filter(t => t.due && dayDiff(t.due) === 0)],
+    ['Найближчим часом', open.filter(t => t.due && dayDiff(t.due) > 0)],
+    ['Без терміну', open.filter(t => !t.due)]
+  ].filter(g => g[1].length);
+  const doneList = all.filter(t => t.done).sort((a,b) => (b.doneAt||0)-(a.doneAt||0));
+  return `<div class="page">
+    <div class="page-head"><div><h1>Завдання</h1><p class="lede">${open.length ? `${open.length} ${plural(open.length,['відкрите','відкриті','відкритих'])} · одним натисканням позначайте виконане.` : 'Усе виконано. Гарна робота.'}</p></div></div>
+    <form class="panel quick-task" data-form="task"><label class="sr" for="qt-text">Нове завдання</label><input class="input" id="qt-text" placeholder="Нове завдання, напр. «Перевірити есе»"><label class="sr" for="qt-due">Термін</label><input class="input date" id="qt-due" type="date" value="${todayISO()}"><label class="sr" for="qt-st">Учень</label><select class="input" id="qt-st"><option value="">Без учня</option>${studentOpts().map(([k,l]) => `<option value="${k}"${f===k?' selected':''}>${esc(l)}</option>`).join('')}</select><button class="btn btn-primary">${ic('plus')} Додати</button></form>
+    <div class="toolbar" style="margin-top:16px"><select class="input filter-select" id="task-filter" aria-label="Фільтр за учнем"><option value="">Усі учні</option>${studentOpts().map(([k,l]) => `<option value="${k}"${f===k?' selected':''}>${esc(l)}</option>`).join('')}</select></div>
+    ${groups.length ? groups.map(([t, list]) => `<div class="group-title"><h2 class="${t==='Прострочені'?'overdue':''}">${t}</h2><span class="n">${list.length}</span></div><ul class="rows panel">${list.map(taskRow).join('')}</ul>`).join('')
+      : `<div class="panel" style="margin-top:16px">${empty(f ? 'Для цього учня відкритих завдань немає' : 'Відкритих завдань немає', 'Додайте нове завдання у поле вище.')}</div>`}
+    ${doneList.length ? `<div class="group-title"><button class="link" data-act="toggle-done" aria-expanded="${ui.tasks.showDone}">${ui.tasks.showDone ? 'Сховати' : 'Показати'} виконані</button><span class="n">${doneList.length}</span></div>${ui.tasks.showDone ? `<ul class="rows panel">${doneList.map(taskRow).join('')}</ul>` : ''}` : ''}
+  </div>`;
+}
+
+/* ========== Учнівська частина ==========
+   Роль визначає посилання: запрошення ?startapp=s_<id> (Telegram) або ?s=<id> (браузер) відкриває
+   кабінет учня й запам'ятовується на пристрої. Без запрошення відкривається кабінет викладача.
+   Поки немає спільної бази, учень на іншому пристрої бачить демо-дані. */
+function me(){ return student(mode.studentId) || student('s1') || state.students[0] || null; }
+const isDemoMe = () => isStudent() && !mode.preview && !student(mode.studentId);
+function newInviteCode(){ const a = new Uint8Array(9); crypto.getRandomValues(a); return [...a].map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join(''); }
+function inviteLinks(sid){
+  const bot = (state.settings.bot || (cloud.on ? CLOUD.bot : '')).trim().replace(/^@/, '').replace(/^https?:\/\/t\.me\//, '');
+  const web = /^https?:/.test(location.protocol) ? location.origin + location.pathname + '?s=' + sid : '';
+  if (cloud.on){
+    const s = student(sid);
+    if (!s.invite){ s.invite = newInviteCode(); save(); }
+    return {tg: `https://t.me/${bot}?startapp=s_${s.invite}`, web:''};
+  }
+  return {tg: bot ? `https://t.me/${bot}?startapp=s_${sid}` : '', web};
+}
+async function copyText(text, input){
+  try { await navigator.clipboard.writeText(text); toast('Посилання скопійовано'); }
+  catch(e){ input.focus(); input.select(); toast('Посилання виділено — скопіюйте його вручну'); }
+}
+function inviteSheet(sid){
+  const s = student(sid), {tg: tgLink, web} = inviteLinks(sid);
+  const box = (label, link, key) => `<div class="field"><label for="inv-${key}">${label}</label><div style="display:flex;gap:8px"><input class="input" id="inv-${key}" readonly value="${esc(link)}"><button class="btn btn-ghost" data-copy="${key}">Копіювати</button></div></div>`;
+  const share = tgLink || web;
+  const body = `<p class="result-note" style="font-size:14px">${esc(s.name)} відкриє посилання й одразу побачить свій розклад, домашні завдання, матеріали та прогрес. Ваші нотатки, плани уроків та інших учнів не видно.</p>
+    <div class="form-grid">
+      ${tgLink ? box('Посилання для Telegram', tgLink, 'tg') : `<div class="field"><span class="lbl">Посилання для Telegram</span><div class="hint" style="font-size:13px">Вкажіть ім’я бота в налаштуваннях — і тут з’явиться посилання, яке відкриває мініапку в Telegram.</div><div><button class="btn btn-ghost btn-sm" data-open-settings>Відкрити налаштування</button></div></div>`}
+      ${cloud.on ? '' : web ? box('Посилання для браузера', web, 'web') : `<div class="field"><span class="lbl">Посилання для браузера</span><div class="hint" style="font-size:13px">З’явиться, коли апку буде викладено на сайт (напр. GitHub Pages).</div></div>`}
+      ${cloud.on ? `<div class="field"><span class="lbl">Статус</span><div style="font-size:14px">${s.tg ? `Підключено в Telegram: ${esc(s.tg.name)}${s.tg.username ? ' (@' + esc(s.tg.username) + ')' : ''}` : 'Учень ще не відкрив запрошення'}</div><div><button class="btn btn-quiet btn-sm" data-regen>Створити нове посилання</button></div><div class="hint">Старе посилання перестане працювати для нових відкриттів.</div></div>` : ''}
+    </div>`;
+  const foot = `<button class="btn btn-quiet" data-preview>${ic('users')} Як бачить учень</button><span class="spacer"></span>${share ? `<a class="btn btn-primary" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(share)}&text=${encodeURIComponent('Ваш кабінет для занять: розклад, домашні та матеріали')}">Надіслати в Telegram</a>` : ''}`;
+  const el = openSheet('Запросити учня', body, {foot});
+  el.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const i = el.querySelector('#inv-' + b.dataset.copy); copyText(i.value, i); });
+  const os = el.querySelector('[data-open-settings]'); if (os) os.onclick = () => settingsSheet();
+  const rg = el.querySelector('[data-regen]'); if (rg) rg.onclick = () => { s.invite = newInviteCode(); save(); inviteSheet(sid); toast('Створено нове посилання'); };
+  el.querySelector('[data-preview]').onclick = () => { closeSheet(true); viewAs(sid); };
+}
+function viewAs(sid){ mode = {role:'student', studentId:sid, preview:true}; lastRoute = ''; location.hash = '#home'; render(); }
+function exitStudent(){
+  const back = mode.preview ? '#students/' + mode.studentId : '#home';
+  if (!mode.preview){ try { localStorage.removeItem(ROLE_KEY); } catch(e){} }
+  mode = {role:'teacher'}; lastRoute = ''; location.hash = back; render();
+}
+function studentBanner(){
+  const s = me();
+  if (mode.preview) return `<div class="banner"><span>Перегляд як учень: <b>${esc(s ? s.name : '')}</b>. Так цей кабінет побачить учень за запрошенням.</span><button class="btn btn-ghost btn-sm" data-act="exit-student">Повернутися до кабінету викладача</button></div>`;
+  if (isDemoMe()) return `<div class="banner"><span>Демо-режим: синхронізацію з викладачем ще не підключено, тому показано приклад даних.</span></div>`;
+  return '';
+}
+const noStudent = () => `<div class="page">${studentBanner()}<div class="panel">${empty('Профіль не знайдено','Попросіть викладача надіслати нове посилання-запрошення.')}</div></div>`;
+function myHwRow(h){
+  return `<li class="task-row"><button class="check${h.done?' on':''}" data-act="my-hw" data-id="${h.id}" role="checkbox" aria-checked="${h.done}" aria-label="${h.done?'Позначити невиконаним':'Позначити виконаним'}: ${esc(h.text)}">${ic('check')}</button><span class="row-main"><span class="row-title ${h.done?'done-text':''}" style="white-space:normal">${esc(h.text)}</span></span></li>`;
+}
+function myLessonRow(l){
+  const req = l.request && l.status==='planned';
+  return `<li><button class="row" data-act="my-lesson" data-id="${l.id}"><span class="time-col">${l.time}<small>${relDay(l.date)}</small></span>
+    <span class="row-main"><span class="row-title">${esc(l.topic || 'Урок')}</span><span class="row-meta">${esc(cap(fmtLong(l.date)))} · ${l.duration} хв</span></span>
+    ${req ? '<span class="tag hide-sm">Запит на перенесення</span>' : ''}<span class="pill st-${l.status}">${STATUS[l.status]}</span></button></li>`;
+}
+function viewStudentHome(){
+  const s = me(); if (!s) return noStudent();
+  const h = new Date().getHours(), hello = h < 5 ? 'Доброї ночі' : h < 12 ? 'Добрий ранок' : h < 18 ? 'Добрий день' : 'Добрий вечір';
+  const n = nextLessonOf(s.id), hw = s.homework.filter(x => !x.done);
+  const next = LEVELS[Math.min(LEVELS.indexOf(s.level)+1, LEVELS.length-1)];
+  const focus = n ? `<div class="panel focus"><div class="focus-time">${n.time}</div><div class="focus-body"><div class="focus-label">Наступний урок · ${relTime(n)}</div><div class="focus-name">${esc(n.topic || 'Урок')}</div><div class="row-meta">${esc(cap(fmtLong(n.date)))} · ${n.duration} хв</div></div>
+      <div>${n.request ? '<span class="tag">Запит на перенесення надіслано</span>' : `<button class="btn btn-ghost" data-act="resched" data-id="${n.id}">Попросити перенести</button>`}</div></div>`
+    : `<div class="panel">${empty('Наступного уроку поки немає','Викладач додасть його в розклад — він з’явиться тут.')}</div>`;
+  return `<div class="page">${studentBanner()}
+    <div class="page-head"><div><p class="eyebrow">${esc(cap(fmtLong(todayISO())))}</p><h1>${hello}!</h1><p class="lede">${esc(s.name)} · ${esc(s.lang)} ${esc(s.level)}</p></div></div>
+    ${focus}
+    <div class="grid-2">
+      <section class="section"><div class="section-head"><h2>Домашні завдання · ${hw.length}</h2><a class="link" href="#homework">Усі</a></div>
+        ${hw.length ? `<ul class="rows panel">${hw.map(myHwRow).join('')}</ul>` : `<div class="panel">${empty('Усе виконано','Нових домашніх завдань немає.')}</div>`}</section>
+      <section class="section"><div class="section-head"><h2>Мій прогрес</h2></div>
+        <div class="panel" style="padding:18px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><span>${esc(s.level)} → ${esc(next)}</span><b style="font-variant-numeric:tabular-nums">${s.progress}%</b></div><div class="bar lg" role="progressbar" aria-valuenow="${s.progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Прогрес рівня"><i style="width:${s.progress}%"></i></div>
+        ${s.goals ? `<p class="row-meta" style="margin:14px 0 4px">Мета</p><p class="prose">${esc(s.goals)}</p>` : ''}</div></section>
+    </div></div>`;
+}
+function viewStudentSchedule(){
+  const s = me(); if (!s) return noStudent();
+  const now = new Date(), mine = state.lessons.filter(l => l.studentId===s.id);
+  const up = mine.filter(l => l.status==='planned' && lessonEnd(l) > now).sort((a,b) => lessonStart(a)-lessonStart(b));
+  const past = mine.filter(l => !(l.status==='planned' && lessonEnd(l) > now)).sort((a,b) => lessonStart(b)-lessonStart(a)).slice(0, 8);
+  return `<div class="page">${studentBanner()}
+    <div class="page-head"><div><h1>Мої уроки</h1><p class="lede">Натисніть на урок, щоб попросити перенести його.</p></div></div>
+    <section><div class="section-head"><h2>Найближчі · ${up.length}</h2></div>${up.length ? `<ul class="rows panel">${up.map(myLessonRow).join('')}</ul>` : `<div class="panel">${empty('Запланованих уроків немає','Викладач додасть їх у розклад.')}</div>`}</section>
+    ${past.length ? `<section class="section"><div class="section-head"><h2>Минулі</h2></div><ul class="rows panel">${past.map(myLessonRow).join('')}</ul></section>` : ''}</div>`;
+}
+function viewStudentHomework(){
+  const s = me(); if (!s) return noStudent();
+  const open = s.homework.filter(h => !h.done), done = s.homework.filter(h => h.done);
+  return `<div class="page">${studentBanner()}
+    <div class="page-head"><div><h1>Домашні завдання</h1><p class="lede">${open.length ? `${open.length} ${plural(open.length,['завдання','завдання','завдань'])} до виконання. Позначайте виконане — викладач це побачить.` : 'Усе виконано. Чудова робота!'}</p></div></div>
+    ${open.length ? `<ul class="rows panel">${open.map(myHwRow).join('')}</ul>` : `<div class="panel">${empty('Нових завдань немає','Коли викладач додасть завдання, воно з’явиться тут.')}</div>`}
+    ${done.length ? `<div class="group-title"><h2>Виконані</h2><span class="n">${done.length}</span></div><ul class="rows panel">${done.map(myHwRow).join('')}</ul>` : ''}</div>`;
+}
+function viewStudentMaterials(){
+  const s = me(); if (!s) return noStudent();
+  const mats = s.materialIds.map(id => state.materials.find(m => m.id===id)).filter(Boolean);
+  return `<div class="page">${studentBanner()}
+    <div class="page-head"><div><h1>Матеріали</h1><p class="lede">Посилання й файли від викладача.</p></div></div>
+    ${mats.length ? `<ul class="rows panel">${mats.map(m => `<li><button class="row" data-act="mat-open" data-id="${m.id}"><span class="avatar" style="border-radius:9px;color:var(--muted)">${ic(m.url ? 'link' : 'file')}</span><span class="row-main"><span class="row-title">${esc(m.title)}</span><span class="row-meta">${esc([m.skill, m.level, m.topic].filter(Boolean).join(' · '))}</span></span><span class="row-side">${ic(m.url ? 'ext' : 'download')}</span></button></li>`).join('')}</ul>`
+      : `<div class="panel">${empty('Матеріалів поки немає','Викладач додасть їх до вашого профілю.')}</div>`}</div>`;
+}
+function myLessonSheet(id){
+  const l = state.lessons.find(x => x.id===id); if (!l) return;
+  const canReq = l.status==='planned' && lessonStart(l) > new Date();
+  const body = `<dl class="detail-list">
+      <dt>Коли</dt><dd>${esc(cap(fmtLong(l.date)))}, ${l.time}–${hm(lessonEnd(l))}</dd>
+      <dt>Тривалість</dt><dd>${l.duration} хв</dd>
+      ${l.topic ? `<dt>Тема</dt><dd>${esc(l.topic)}</dd>` : ''}
+      <dt>Статус</dt><dd><span class="pill st-${l.status}">${STATUS[l.status]}</span></dd>
+      ${l.request ? `<dt>Ваш запит</dt><dd>Перенести${l.request.date ? ' на ' + esc(fmtShort(l.request.date)) + (l.request.time ? ' о ' + esc(l.request.time) : '') : ''}${l.request.text ? ` — «${esc(l.request.text)}»` : ''}</dd>` : ''}
+    </dl>`;
+  const foot = canReq && !l.request ? `<span class="spacer"></span><button class="btn btn-primary" data-req>${ic('clock')} Попросити перенести</button>` : '';
+  const el = openSheet('Урок', body, {foot});
+  const b = el.querySelector('[data-req]'); if (b) b.onclick = () => reschedForm(id);
+}
+function reschedForm(id){
+  const l = state.lessons.find(x => x.id===id), s = student(l.studentId);
+  openForm({
+    title:'Попросити перенести урок', submit:'Надіслати запит',
+    intro:`<p class="result-note" style="font-size:14px">Урок ${esc(fmtLong(l.date))} о ${l.time}. Викладач отримає запит і запропонує новий час.</p>`,
+    fields:[
+      {name:'date', label:'Зручна дата', type:'date', optional:true, half:true},
+      {name:'time', label:'Зручний час', type:'time', optional:true, half:true},
+      {name:'text', label:'Коментар', type:'textarea', rows:2, optional:true, placeholder:'Напр. Захворів, можна в четвер?'}
+    ],
+    onSubmit: async v => {
+      if (v.date && dayDiff(v.date) < 0) return {date:'Оберіть дату, яка ще не минула'};
+      if (cloud.on){
+        if (mode.preview) return 'Це перегляд: запит надсилає сам учень';
+        try { const r = await api('resched', {lessonId:l.id, date:v.date, time:v.time, text:v.text}); loadStudent(r); render(); haptic(); toast('Запит надіслано викладачу'); }
+        catch(e){ return 'Не вдалося надіслати запит — перевірте з’єднання'; }
+        return;
+      }
+      l.request = {date:v.date, time:v.time, text:v.text, at:Date.now()};
+      state.tasks.push({id:uid(), text:reqTaskText(s, l, v), due:todayISO(), studentId:l.studentId, done:false, created:Date.now()});
+      if (s) s.touched = Date.now();
+      save(); render(); haptic(); toast('Запит надіслано викладачу');
+    }
+  });
+}
+function studentSettings(){
+  const el = openSheet('Налаштування', `<div class="form-grid">${fieldHTML({name:'theme', label:'Тема', type:'seg', options:[['system','Як у системі'],['light','Світла'],['dark','Темна']]}, state.settings.theme)}</div>
+    ${mode.preview || cloud.on ? '' : `<div class="form-section" style="margin-top:22px">Прототип</div><p class="result-note" style="margin-top:8px">У робочій версії учень не зможе перемкнутися на кабінет викладача.</p><button class="btn btn-ghost" data-exit>Вийти з кабінету учня</button>`}`);
+  el.querySelectorAll('input[name=theme]').forEach(r => r.onchange = () => { state.settings.theme = r.value; applyTheme(); save(); });
+  const x = el.querySelector('[data-exit]'); if (x) x.onclick = () => { closeSheet(true); exitStudent(); };
+}
+
+/* ========== Рендер ========== */
+let lastRoute = '';
+function render(){
+  const {r, id} = route(), key = r + '/' + (id||'');
+  const main = $('#main');
+  const sy = key === lastRoute ? window.scrollY : 0;
+  const ae = document.activeElement, aeId = ae && ae.id;
+  if (key !== lastRoute) ui.profileTab = 'overview';
+  const views = isStudent() ? {home:viewStudentHome, schedule:viewStudentSchedule, homework:viewStudentHomework, materials:viewStudentMaterials} : {home:viewHome, students:viewStudents, schedule:viewSchedule, library:viewLibrary, tasks:viewTasks};
+  main.innerHTML = r==='students' && id ? viewProfile(id) : views[r]();
+  if (key !== lastRoute) window.scrollTo(0, 0);
+  else { window.scrollTo(0, sy); if (aeId && $('#'+aeId)) $('#'+aeId).focus(); }
+  lastRoute = key;
+  const title = nav().find(n => n[0]===r)[1];
+  document.title = (id && student(id) ? student(id).name : title) + (isStudent() ? ' · Мої заняття' : ' · Кабінет викладача');
+  renderNav(); syncBack();
+}
+window.addEventListener('hashchange', () => { if (!booted) return; closeSheet(true); render(); });
+
+/* Делеговані дії */
+const ACT = {
+  add: () => addMenu(),
+  'add-student': () => studentForm(),
+  'add-task': () => taskForm(),
+  'add-lesson': el => lessonForm(null, {studentId: el.dataset.student}),
+  'edit-student': el => studentForm(el.dataset.id),
+  lesson: el => lessonSheet(el.dataset.id),
+  'lesson-done': el => lessonSheet(el.dataset.id, 'done'),
+  'task-toggle': el => toggleTask(el.dataset.id),
+  'task-edit': el => taskForm(el.dataset.id),
+  'toggle-done': () => { ui.tasks.showDone = !ui.tasks.showDone; render(); },
+  settings: () => isStudent() ? studentSettings() : settingsSheet(),
+  invite: el => inviteSheet(el.dataset.id),
+  'exit-student': () => exitStudent(),
+  'my-lesson': el => myLessonSheet(el.dataset.id),
+  resched: el => reschedForm(el.dataset.id),
+  'my-hw': async el => {
+    const s = me(), h = s.homework.find(x => x.id===el.dataset.id);
+    if (cloud.on && mode.preview){ toast('Це перегляд: відмітки ставить сам учень'); return; }
+    h.done = !h.done; render(); if (h.done){ haptic(); toast('Позначено як виконане'); }
+    if (!cloud.on){ s.touched = Date.now(); save(); return; }
+    try { const r = await api('hw', {id:h.id, done:h.done}); loadStudent(r); render(); }
+    catch(e){ h.done = !h.done; render(); toast('Не вдалося зберегти відмітку — перевірте з’єднання', {error:true}); }
+  },
+  theme: () => { state.settings.theme = effectiveDark() ? 'light' : 'dark'; applyTheme(); save(); },
+  'st-reset': () => { ui.st = {q:'', lang:'', level:'', format:''}; render(); },
+  ptab: el => { ui.profileTab = el.dataset.k; render(); },
+  prog: el => { const s = student(route().id); s.progress = Math.max(0, Math.min(100, s.progress + Number(el.dataset.d))); s.touched = Date.now(); save(); render(); },
+  'hw-toggle': el => { const s = student(route().id), h = s.homework.find(x => x.id===el.dataset.id); h.done = !h.done; s.touched = Date.now(); save(); render(); if (h.done){ haptic(); toast('Домашнє завдання виконано'); } },
+  'hw-del': el => { const snap = snapshot(), s = student(route().id); s.homework = s.homework.filter(x => x.id!==el.dataset.id); save(); render(); toast('Видалено', {undo: () => restore(snap)}); },
+  'note-del': el => { const snap = snapshot(), s = student(route().id); s.notes = s.notes.filter(x => x.id!==el.dataset.id); save(); render(); toast('Нотатку видалено', {undo: () => restore(snap)}); },
+  attach: el => attachMaterial(el.dataset.id),
+  'mat-detach': el => { const s = student(route().id); s.materialIds = s.materialIds.filter(x => x!==el.dataset.id); save(); render(); toast('Прибрано з профілю'); },
+  'mat-open': el => openMaterial(el.dataset.id),
+  'mat-edit': el => materialForm(el.dataset.id),
+  'mat-new': () => materialForm(),
+  'sched-view': el => { ui.sched.view = el.dataset.v; render(); },
+  'sched-move': el => { ui.sched.date = addDays(ui.sched.date, Number(el.dataset.d) * (ui.sched.view==='day' ? 1 : 7)); render(); },
+  'sched-today': el => { ui.sched.date = todayISO(); ui.sched.view = 'day'; if (el.tagName !== 'A') render(); },
+  'open-day': el => { ui.sched.date = el.dataset.d; ui.sched.view = 'day'; render(); },
+  'lib-tab': el => { ui.lib.tab = el.dataset.v; ui.lib.q = ''; render(); },
+  'lib-skill': el => { ui.lib.skill = el.dataset.v; render(); },
+  'lib-reset': () => { ui.lib.q = ''; ui.lib.skill = ''; ui.lib.level = ''; render(); },
+  'plan-new': () => newPlanChooser(),
+  'plan-open': el => planForm(el.dataset.id),
+  'plan-use': el => planForm(null, state.plans.find(p => p.id===el.dataset.id)),
+  'plan-dup': el => planForm(null, state.plans.find(p => p.id===el.dataset.id))
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || (sheetEl && !sheetEl.contains(el) && !el.closest('.app'))) return;
+  const fn = ACT[el.dataset.act]; if (!fn) return;
+  if (el.tagName !== 'A') e.preventDefault();
+  fn(el, e);
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'st-q'){ ui.st.q = e.target.value; $('#st-list').innerHTML = studentListHTML(); }
+  if (e.target.id === 'lib-q'){ ui.lib.q = e.target.value; $('#lib-list').innerHTML = ui.lib.tab==='plans' ? planListHTML() : materialListHTML(); }
+});
+document.addEventListener('change', e => {
+  const f = e.target.dataset && e.target.dataset.filter;
+  if (f){ ui.st[f] = e.target.value; $('#st-list').innerHTML = studentListHTML(); }
+  if (e.target.id === 'lib-level'){ ui.lib.level = e.target.value; render(); }
+  if (e.target.id === 'task-filter'){ ui.tasks.student = e.target.value; render(); }
+});
+document.addEventListener('submit', e => {
+  const form = e.target.closest('[data-form]'); if (!form) return;
+  e.preventDefault();
+  const kind = form.dataset.form;
+  if (kind === 'task'){
+    const text = $('#qt-text').value.trim();
+    if (!text){ toast('Опишіть завдання, щоб додати його', {error:true}); $('#qt-text').focus(); return; }
+    state.tasks.push({id:uid(), text, due: $('#qt-due').value, studentId: $('#qt-st').value, done:false, created:Date.now()});
+    save(); render(); $('#qt-text').focus(); toast('Завдання додано');
+  }
+  if (kind === 'hw'){
+    const v = $('#hw-in').value.trim(), s = student(route().id);
+    if (!v){ $('#hw-in').focus(); return; }
+    s.homework.unshift({id:uid(), text:v, done:false}); s.touched = Date.now(); save(); render(); $('#hw-in').focus(); toast('Домашнє завдання додано');
+  }
+  if (kind === 'note'){
+    const v = $('#note-in').value.trim(), s = student(route().id);
+    if (!v){ toast('Нотатка порожня', {error:true}); $('#note-in').focus(); return; }
+    s.notes.unshift({id:uid(), date:todayISO(), text:v}); s.touched = Date.now(); save(); render(); toast('Нотатку збережено');
+  }
+});
+
+/* ========== Telegram Mini App ========== */
+const tg = (() => { try { return window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null; } catch(e){ return null; } })();
+function syncBack(){
+  if (!tg || !tg.BackButton) return;
+  try { (sheetEl || route().id) ? tg.BackButton.show() : tg.BackButton.hide(); } catch(e){}
+}
+try {
+  if (tg){
+    tg.ready(); tg.expand();
+    tg.BackButton.onClick(() => { if (sheetEl) closeSheet(); else history.length > 1 ? history.back() : (location.hash = '#students'); });
+    tg.onEvent && tg.onEvent('themeChanged', applyTheme);
+  }
+} catch(e){}
+
+/* ========== Хмара: Supabase + Telegram ==========
+   Усередині Telegram дані живуть у базі й синхронізуються між викладачем і учнями
+   через серверну функцію supabase/functions/api (вона перевіряє підпис Telegram).
+   Поза Telegram апка працює локально, як раніше. */
+const CLOUD = {
+  fn: 'https://ftwxwwmhjqqjbihbamar.supabase.co/functions/v1/api',
+  key: 'sb_publishable_jeEZpl6VpTMZRifPztp03w_RXsaWIdW',
+  bot: 'mmytteacherappbot'
+};
+const cloud = {on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
+let booted = false;
+async function api(op, extra={}){
+  const r = await fetch(CLOUD.fn, {method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, initData: tg.initData, ...extra})});
+  let b = null; try { b = await r.json(); } catch(e){}
+  if (r.status === 409 && b) return b;
+  if (!r.ok){ const err = new Error((b && b.error) || 'HTTP ' + r.status); err.status = r.status; throw err; }
+  return b;
+}
+function setSync(text){ const el = $('#sync-note'); if (el) el.textContent = text; }
+function reqTaskText(s, l, p){
+  const pref = p.date ? ' → бажано ' + fmtShort(p.date) + (p.time ? ' о ' + p.time : '') : '';
+  return `Запит на перенесення: ${s ? s.name : 'учень'}, урок ${fmtShort(l.date)} о ${l.time}${pref}${p.text ? ' — «' + p.text + '»' : ''}`;
+}
+function emptyWorkspace(){
+  const first = cloud.me && cloud.me.name ? cloud.me.name.split(' ')[0] : '';
+  return {v:1, students:[], lessons:[], plans: seed().plans.filter(p => p.isTemplate), materials:[], tasks:[], settings:{name:first, theme:'system', bot:CLOUD.bot}};
+}
+// Переносить дії учнів (відмітки ДЗ, запити на перенесення, підключення) у дані викладача.
+function applyActions(list){
+  let n = 0;
+  for (const a of list || []){
+    if (cloud.seen.has(a.id)) continue;
+    cloud.seen.add(a.id); cloud.applied.push(a.id); n++;
+    const s = student(a.student_id); if (!s) continue;
+    if (a.kind === 'hw'){ const h = s.homework.find(x => x.id === a.payload.id); if (h) h.done = !!a.payload.done; }
+    if (a.kind === 'resched'){
+      const l = state.lessons.find(x => x.id === a.payload.lessonId), p = a.payload;
+      if (l && l.status === 'planned'){
+        l.request = {date:p.date, time:p.time, text:p.text, at:p.at};
+        state.tasks.push({id:uid(), text:reqTaskText(s, l, p), due:todayISO(), studentId:s.id, done:false, created:Date.now()});
+      }
+    }
+    if (a.kind === 'joined') s.tg = {name:a.payload.name || '', username:a.payload.username || '', at:a.created_at};
+    s.touched = Date.now();
+  }
+  return n;
+}
+function loadTeacher(r){
+  state = r.data && Array.isArray(r.data.students) ? r.data : emptyWorkspace();
+  state.settings = Object.assign({name:'', theme:'system', bot:CLOUD.bot}, state.settings);
+  if (!state.settings.bot) state.settings.bot = CLOUD.bot;
+  cloud.version = r.version || 0; cloud.applied = []; cloud.seen = new Set();
+  mode = {role:'teacher'};
+  const n = applyActions(r.actions);
+  if (n || !r.data) queueCloudSave();
+  return n;
+}
+function loadStudent(r){
+  let theme = 'system'; try { theme = localStorage.getItem('tw-theme') || 'system'; } catch(e){}
+  const v = r.view;
+  state = {v:1, students: v ? [{...v.student, notes:[], summary:'', touched:0}] : [], lessons: v ? v.lessons : [], materials: v ? v.materials : [], plans:[], tasks:[], settings:{name:'', theme, bot:CLOUD.bot}};
+  mode = {role:'student', studentId: v ? v.student.id : ''};
+}
+function queueCloudSave(){
+  cloud.dirty = true; setSync('Збереження…');
+  clearTimeout(cloud.timer); cloud.timer = setTimeout(flush, 500);
+}
+async function flush(){
+  clearTimeout(cloud.timer);
+  if (cloud.saving){ cloud.again = true; return; }
+  if (!cloud.dirty) return;
+  cloud.saving = true; cloud.dirty = false;
+  const applied = cloud.applied.slice();
+  try {
+    const r = await api('save', {data:state, version:cloud.version, applied});
+    if (r.conflict){ loadTeacher(r); if (!sheetEl) render(); toast('Дані змінилися на іншому пристрої — показано свіжу версію'); }
+    else { cloud.version = r.version; cloud.applied = cloud.applied.filter(id => !applied.includes(id)); }
+    if (cloud.offline){ cloud.offline = false; toast('З’єднання відновлено, усе збережено'); }
+    setSync('Усе збережено');
+  } catch(e){
+    cloud.dirty = true;
+    if (!cloud.offline){ cloud.offline = true; toast('Не вдалося зберегти — немає з’єднання. Спробую ще раз автоматично', {error:true}); }
+    setSync('Не збережено · немає з’єднання');
+    cloud.timer = setTimeout(flush, 15000);
+  }
+  cloud.saving = false;
+  if (cloud.again){ cloud.again = false; flush(); }
+}
+// Періодично підтягує свіжі дані: викладачу — дії учнів і зміни з інших пристроїв, учню — оновлений розклад і ДЗ.
+async function pull(){
+  if (!cloud.on || !booted || cloud.saving || cloud.dirty || document.hidden) return;
+  try {
+    if (isStudent()){
+      if (mode.preview) return;
+      const r = await api('view');
+      if (!sheetEl){ loadStudent(r); render(); }
+      return;
+    }
+    const r = await api('pull');
+    if (cloud.dirty || cloud.saving || isStudent()) return;
+    const changed = r.version !== cloud.version;
+    let n;
+    if (changed){ if (sheetEl) return; n = loadTeacher(r); }
+    else { n = applyActions(r.actions); if (n) queueCloudSave(); }
+    if ((changed || n) && !sheetEl) render();
+    if (n) toast(`Оновлення від учнів: ${n}`);
+  } catch(e){}
+}
+function gate(title, text){
+  document.body.classList.add('gate');
+  $('#main').innerHTML = `<div class="page"><div class="panel" style="max-width:520px;margin:12vh auto 0">${empty(title, text)}</div></div>`;
+}
+function ready(){ document.body.classList.remove('gate'); booted = true; lastRoute = ''; applyTheme(); render(); }
+async function boot(){
+  document.querySelectorAll('[data-act=settings]').forEach(b => b.innerHTML = ic('settings'));
+  if (tg && CLOUD.fn){
+    cloud.on = true; applyTheme();
+    gate('Завантаження…', 'Підключаюся до вашого кабінету.');
+    try {
+      const r = await api('init'); cloud.me = r.me;
+      if (r.role === 'teacher'){
+        const n = loadTeacher(r); ready();
+        if (r.ownInvite) toast('Це ваше власне запрошення — відкрийте його з акаунта учня');
+        else if (n) toast(`Оновлення від учнів: ${n}`);
+      }
+      else if (r.role === 'student'){ loadStudent(r); ready(); }
+      else if (r.role === 'invalid-invite') gate('Запрошення недійсне', 'Посилання застаріло або учня видалено. Попросіть викладача надіслати нове.');
+      else gate('Потрібне запрошення', 'Цей бот — кабінет для учнів викладача. Попросіть у викладача посилання-запрошення й відкрийте його.');
+    } catch(e){
+      cloud.on = false; initRole(); ready();
+      toast(e.status === 401 ? 'Не вдалося перевірити вхід через Telegram — працюю локально на цьому пристрої' : 'Сервер недоступний — працюю локально на цьому пристрої', {error:true, ms:9000});
+    }
+  } else { initRole(); ready(); }
+  setInterval(pull, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+}
+
+boot();
+setInterval(() => { if (!booted) return; renderNav(); if (route().r === 'home' && !sheetEl && !document.activeElement.matches('input,textarea,select')) render(); }, 60000);
+</script>
+</body>
+</html>
