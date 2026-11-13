@@ -1554,8 +1554,10 @@ const CLOUD = {
 const cloud = {on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
 let booted = false;
 async function api(op, extra={}){
-  const r = await fetch(CLOUD.fn, {method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, initData: tg.initData, ...extra})});
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
+  const r = await fetch(CLOUD.fn, {signal: ctl.signal, method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, initData: tg.initData, ...extra})});
   let b = null; try { b = await r.json(); } catch(e){}
+  clearTimeout(timer);
   if (r.status === 409 && b) return b;
   if (!r.ok){ const err = new Error((b && b.error) || 'HTTP ' + r.status); err.status = r.status; throw err; }
   return b;
