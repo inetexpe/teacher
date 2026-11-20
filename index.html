@@ -323,7 +323,7 @@
   .toast.error{background:var(--cancel-bg);color:var(--cancel);border:1px solid currentColor}
   .toast button{font-weight:600;color:inherit;text-decoration:underline;text-underline-offset:3px}
   @keyframes tin{from{opacity:0;transform:translateY(6px)}}
-  @media (max-width:640px){ .hide-sm{display:none!important} }
+  @media (max-width:640px){ .hide-sm{display:none!important} .row-side .bar{display:none} }
   @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
 </head>
@@ -496,6 +496,8 @@ function seed(){
   students.find(s=>s.id==='s5').materialIds = ['m5'];
   students.find(s=>s.id==='s6').materialIds = ['m6','m7'];
   students.find(s=>s.id==='s4').materialIds = ['m8'];
+  const Pay = (sid, days, lessons, amount, note) => { const st = students.find(s=>s.id===sid); st.payments = (st.payments || []).concat({id:uid(), date:addDays(today,-days), lessons, amount, currency:'грн', note}); };
+  Pay('s1',15,8,3200,'пакет 8 уроків'); Pay('s3',20,10,5000,'пакет 10 уроків'); Pay('s4',20,4,1400,''); Pay('s5',10,8,3600,'');
   const T = (text, due, studentId, done=false) => ({id:uid(), text, due: due===null ? '' : addDays(today,due), studentId, done, created:Date.now()});
   const tasks = [
     T('Перевірити есе Софії (IELTS Task 2)',-1,'s3'),
@@ -767,7 +769,8 @@ function setLessonStatus(id, status, note){
   const prev = {status:l.status, note:l.note};
   l.status = status; if (note !== undefined) l.note = note;
   touch(l.studentId); save(); render(); haptic();
-  toast(status==='done' ? 'Заняття позначено як проведене' : status==='cancelled' ? 'Заняття скасовано' : 'Заняття знову заплановане', {undo: () => { Object.assign(l, prev); save(); render(); }});
+  const bal = status === 'done' ? balanceOf(student(l.studentId)) : null;
+  toast(status==='done' ? 'Заняття позначено як проведене' + (bal !== null ? ` · ${balanceText(bal)}` : '') : status==='cancelled' ? 'Заняття скасовано' : 'Заняття знову заплановане', {undo: () => { Object.assign(l, prev); save(); render(); }});
 }
 
 /* Деталі уроку з діями: провести (з нотаткою), перенести, скасувати */
@@ -1121,6 +1124,7 @@ function viewHome(){
         <section class="section"><div class="section-head"><h2>Завдання на сьогодні</h2><a class="link" href="#tasks">Усі</a></div>
           ${due.length ? `<ul class="rows panel">${due.slice(0,5).map(taskRow).join('')}</ul>${due.length>5 ? `<p class="result-note" style="margin-top:8px">І ще ${due.length-5} — у розділі «Завдання»</p>` : ''}` : `<div class="panel">${empty('Усе виконано', 'На сьогодні завдань немає.', '<br><button class="btn btn-ghost btn-sm" data-act="add-task">+ Завдання</button>')}</div>`}
         </section>
+        ${(() => { const low = state.students.map(s => [s, balanceOf(s)]).filter(([, b]) => b !== null && b <= 1).sort((a, b) => a[1] - b[1]); return low.length ? `<section class="section"><div class="section-head"><h2>Потрібна оплата · ${low.length}</h2></div><ul class="rows panel">${low.map(([s, b]) => `<li><a class="row" href="#students/${s.id}">${avatar(s)}<span class="row-main"><span class="row-title">${esc(s.name)}</span><span class="row-meta">${balanceText(b)}</span></span>${balanceTag(b)}</a></li>`).join('')}</ul></section>` : ''; })()}
         <section class="section"><div class="section-head"><h2>Останні учні</h2><a class="link" href="#students">Усі</a></div>
           ${recent.length ? `<ul class="rows panel">${recent.map(s => `<li><a class="row" href="#students/${s.id}">${avatar(s)}<span class="row-main"><span class="row-title">${esc(s.name)}</span><span class="row-meta">${esc(s.lang)} · ${esc(s.level)}</span></span><span class="progress"><span class="bar"><i style="width:${s.progress}%"></i></span>${s.progress}%</span></a></li>`).join('')}</ul>` : `<div class="panel">${empty('Ще немає учнів','', '<br><button class="btn btn-ghost btn-sm" data-act="add-student">+ Учень</button>')}</div>`}
         </section>
@@ -1140,7 +1144,7 @@ function studentListHTML(){
   return `<p class="result-note">${list.length} ${plural(list.length,['учень','учні','учнів'])}${any ? ` з ${state.students.length} · <button class="link" data-act="st-reset">скинути фільтри</button>` : ''}</p>
     <ul class="rows panel">${list.map(s => { const n = nextLessonOf(s.id); return `<li><a class="row" href="#students/${s.id}">${avatar(s)}
       <span class="row-main"><span class="row-title">${esc(s.name)}</span><span class="row-meta">${esc(s.lang)} · ${esc(s.level)} · ${esc(s.format)}${s.summary ? ' — ' + esc(s.summary) : ''}</span></span>
-      <span class="row-side"><span class="hide-sm" style="text-align:right;min-width:92px">${n ? `${relDay(n.date)}, ${n.time}` : '<span style="color:var(--faint)">Без уроку</span>'}</span><span class="progress" aria-label="Прогрес ${s.progress}%"><span class="bar"><i style="width:${s.progress}%"></i></span>${s.progress}%</span></span></a></li>`; }).join('')}</ul>`;
+      <span class="row-side">${balanceTag(balanceOf(s))}<span class="hide-sm" style="text-align:right;min-width:92px">${n ? `${relDay(n.date)}, ${n.time}` : '<span style="color:var(--faint)">Без уроку</span>'}</span><span class="progress" aria-label="Прогрес ${s.progress}%"><span class="bar"><i style="width:${s.progress}%"></i></span>${s.progress}%</span></span></a></li>`; }).join('')}</ul>`;
 }
 function viewStudents(){
   const sel = (key, label, opts) => `<select class="input filter-select" data-filter="${key}" aria-label="${label}"><option value="">${label}: усі</option>${opts.map(o => `<option${ui.st[key]===o?' selected':''}>${o}</option>`).join('')}</select>`;
@@ -1163,7 +1167,8 @@ function viewProfile(id){
   const tabs = [['overview','Огляд'],['history',`Заняття · ${done}`],['homework',`Домашні${hwOpen ? ' · ' + hwOpen : ''}`],['materials',`Матеріали · ${s.materialIds.length}`],['notes',`Нотатки · ${s.notes.length}`]];
   let content = '';
   if (tab==='overview'){
-    content = `<div class="panel stat-line"><div class="stat"><div class="k">Наступний урок</div><div class="v">${n ? `${relDay(n.date)}, ${n.time}` : '—'}</div></div><div class="stat"><div class="k">Проведено занять</div><div class="v">${done}</div></div><div class="stat"><div class="k">Формат</div><div class="v">${esc(s.format)}</div></div></div>
+    content = `<div class="panel stat-line"><div class="stat"><div class="k">Наступний урок</div><div class="v">${n ? `${relDay(n.date)}, ${n.time}` : '—'}</div></div><div class="stat"><div class="k">Проведено занять</div><div class="v">${done}</div></div><div class="stat"><div class="k">Оплачених уроків</div><div class="v"${balanceOf(s) !== null && balanceOf(s) <= 1 ? ' style="color:var(--warn)"' : ''}>${balanceOf(s) === null ? '—' : balanceOf(s) < 0 ? 'борг ' + -balanceOf(s) : balanceOf(s)}</div></div></div>
+      <section class="section"><div class="section-head"><h2>Оплата</h2>${balanceOf(s) !== null ? `<button class="btn btn-ghost btn-sm" data-act="pay-add" data-id="${id}">${ic('plus')} Оплата</button>` : ''}</div>${paymentPanel(s, true)}</section>
       <section class="section"><div class="section-head"><h2>Прогрес</h2><div class="stepper"><button data-act="prog" data-d="-5" aria-label="Зменшити прогрес">−</button><button data-act="prog" data-d="5" aria-label="Збільшити прогрес">+</button></div></div>
         <div class="panel" style="padding:18px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><span>${esc(s.level)} → ${esc(LEVELS[Math.min(LEVELS.indexOf(s.level)+1, LEVELS.length-1)])}</span><b style="font-variant-numeric:tabular-nums">${s.progress}%</b></div><div class="bar lg" role="progressbar" aria-valuenow="${s.progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Прогрес рівня"><i style="width:${s.progress}%"></i></div>${s.summary ? `<p class="row-meta" style="white-space:normal;margin:12px 0 0">${esc(s.summary)}</p>` : ''}</div></section>
       <section class="section"><div class="section-head"><h2>Цілі</h2><button class="link" data-act="edit-student" data-id="${id}">Змінити</button></div>
@@ -1352,9 +1357,10 @@ function viewStudentHome(){
     <div class="grid-2">
       <section class="section"><div class="section-head"><h2>Домашні завдання · ${hw.length}</h2><a class="link" href="#homework">Усі</a></div>
         ${hw.length ? `<ul class="rows panel">${hw.map(myHwRow).join('')}</ul>` : `<div class="panel">${empty('Усе виконано','Нових домашніх завдань немає.')}</div>`}</section>
+      <div>${balanceOf(s) !== null ? `<section class="section"><div class="section-head"><h2>Оплачені уроки</h2></div>${paymentPanel(s, false)}</section>` : ''}
       <section class="section"><div class="section-head"><h2>Мій прогрес</h2></div>
         <div class="panel" style="padding:18px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><span>${esc(s.level)} → ${esc(next)}</span><b style="font-variant-numeric:tabular-nums">${s.progress}%</b></div><div class="bar lg" role="progressbar" aria-valuenow="${s.progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Прогрес рівня"><i style="width:${s.progress}%"></i></div>
-        ${s.goals ? `<p class="row-meta" style="margin:14px 0 4px">Мета</p><p class="prose">${esc(s.goals)}</p>` : ''}</div></section>
+        ${s.goals ? `<p class="row-meta" style="margin:14px 0 4px">Мета</p><p class="prose">${esc(s.goals)}</p>` : ''}</div></section></div>
     </div></div>`;
 }
 function viewStudentSchedule(){
@@ -1429,6 +1435,61 @@ function studentSettings(){
   const x = el.querySelector('[data-exit]'); if (x) x.onclick = () => { closeSheet(true); exitStudent(); };
 }
 
+/* ========== Оплата: пакети уроків ==========
+   Викладач записує оплати (скільки уроків і, за бажанням, суму). Залишок = оплачені уроки
+   мінус проведені з дати першої оплати; скасовані уроки не списуються. */
+const CURRENCIES = [['грн','грн'],['€','€'],['$','$'],['zł','zł']];
+function balanceOf(s){
+  if (!s || !s.payments || !s.payments.length) return null;
+  const start = s.payments.reduce((m, x) => x.date < m ? x.date : m, s.payments[0].date);
+  const paid = s.payments.reduce((a, x) => a + (Number(x.lessons) || 0), 0);
+  const used = state.lessons.filter(l => l.studentId === s.id && l.status === 'done' && l.date >= start).length;
+  return paid - used;
+}
+const lessonsWord = n => `${n} ${plural(n, ['урок','уроки','уроків'])}`;
+const balanceText = b => b < 0 ? `борг ${lessonsWord(-b)}` : b === 0 ? 'оплачені уроки закінчилися' : `${b % 10 === 1 && b % 100 !== 11 ? 'залишився' : 'залишилось'} ${lessonsWord(b)}`;
+const balanceTag = b => b === null ? '' : `<span class="tag"${b <= 1 ? ' style="background:var(--cancel-bg);color:var(--cancel)"' : ''}>${b < 0 ? 'борг ' + -b : b} ${plural(Math.abs(b), ['урок','уроки','уроків'])}</span>`;
+const money = x => x.amount ? `${Number(x.amount).toLocaleString('uk-UA')} ${x.currency || ''}`.trim() : '';
+function paymentForm(sid){
+  const s = student(sid);
+  openForm({
+    title:'Нова оплата', submit:'Зберегти оплату',
+    intro:`<p class="result-note" style="font-size:14px">${esc(s.name)}. Кожен проведений урок віднімається від залишку автоматично.</p>`,
+    values:{date: todayISO(), lessons: 8, currency: state.settings.currency || 'грн'},
+    fields:[
+      {name:'lessons', label:'Скільки уроків оплачено', type:'number', required:true, half:true, min:-100, max:500, reqMsg:'Вкажіть кількість уроків', hint:'Від’ємне число — щоб виправити залишок'},
+      {name:'date', label:'Дата оплати', type:'date', required:true, half:true},
+      {name:'amount', label:'Сума', type:'number', optional:true, half:true, min:0},
+      {name:'currency', label:'Валюта', type:'select', options:CURRENCIES, half:true},
+      {name:'note', label:'Нотатка', optional:true, placeholder:'Напр. пакет 8 уроків, переказ на картку'}
+    ],
+    onSubmit: v => {
+      const n = Math.round(Number(v.lessons));
+      if (!n) return {lessons:'Вкажіть ціле число, не нуль'};
+      s.payments = s.payments || [];
+      s.payments.push({id:uid(), date:v.date, lessons:n, amount: Number(v.amount) || 0, currency:v.currency, note:v.note});
+      state.settings.currency = v.currency; s.touched = Date.now();
+      save(); render(); toast(`Оплату збережено · ${balanceText(balanceOf(s))}`);
+    }
+  });
+}
+function deletePayment(sid, pid){
+  const snap = snapshot(), s = student(sid);
+  s.payments = (s.payments || []).filter(x => x.id !== pid);
+  save(); render(); toast('Оплату видалено', {undo: () => restore(snap)});
+}
+// Блок оплати в профілі учня (викладач) і на головній учня.
+function paymentPanel(s, teacher){
+  const b = balanceOf(s), list = (s.payments || []).slice().sort((a, x) => x.date.localeCompare(a.date));
+  if (b === null) return teacher
+    ? `<div class="panel">${empty('Оплату ще не ведете', 'Запишіть першу оплату — і апка рахуватиме, скільки уроків залишилось.', `<br><button class="btn btn-ghost btn-sm" data-act="pay-add" data-id="${s.id}">+ Оплата</button>`).replace('class="empty"','class="empty sm"')}</div>`
+    : '';
+  const warn = b <= 1;
+  const head = `<div style="padding:18px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font:400 34px/1 var(--serif);font-variant-numeric:tabular-nums${warn ? ';color:var(--warn)' : ''}">${Math.max(b, 0)}</span><span style="flex:1;min-width:160px">${b > 0 ? `${plural(b, ['оплачений урок','оплачені уроки','оплачених уроків'])} ${b % 10 === 1 && b % 100 !== 11 ? 'залишився' : 'залишилось'}` : b === 0 ? 'Оплачені уроки закінчилися' : `Борг: ${lessonsWord(-b)}`}${teacher ? '' : b <= 0 ? '<br><span class="row-meta" style="white-space:normal">Домовтеся з викладачем про наступну оплату.</span>' : ''}</span></div>`;
+  const rows = list.slice(0, teacher ? 20 : 5).map(x => `<li class="task-row"><span class="row-main"><span class="row-title">${x.lessons > 0 ? '+' : ''}${lessonsWord(x.lessons)}${money(x) ? ' · ' + esc(money(x)) : ''}</span><span class="row-meta">${esc(fmtShort(x.date))}${x.note ? ' · ' + esc(x.note) : ''}</span></span>${teacher ? `<button class="icon-btn" data-act="pay-del" data-id="${x.id}" aria-label="Видалити оплату">${ic('trash')}</button>` : ''}</li>`).join('');
+  return `<div class="panel">${head}<ul class="rows" style="border-top:1px solid var(--line)">${rows}</ul></div>`;
+}
+
 /* ========== Рендер ========== */
 let lastRoute = '';
 function render(){
@@ -1462,6 +1523,8 @@ const ACT = {
   'toggle-done': () => { ui.tasks.showDone = !ui.tasks.showDone; render(); },
   settings: () => isStudent() ? studentSettings() : settingsSheet(),
   invite: el => inviteSheet(el.dataset.id),
+  'pay-add': el => paymentForm(el.dataset.id),
+  'pay-del': el => deletePayment(route().id, el.dataset.id),
   'exit-student': () => exitStudent(),
   'my-lesson': el => myLessonSheet(el.dataset.id),
   resched: el => reschedForm(el.dataset.id),
@@ -1559,7 +1622,7 @@ const CLOUD = {
   key: 'sb_publishable_jeEZpl6VpTMZRifPztp03w_RXsaWIdW',
   bot: 'mmytteacherappbot'
 };
-const APP_VERSION = '5';
+const APP_VERSION = '6';
 const cloud = {error:'', teachers:[], teacherId:0, isAdmin:false, pendingTeachers:0, on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
 let booted = false;
 async function api(op, extra={}){

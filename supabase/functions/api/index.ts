@@ -84,7 +84,7 @@ async function studentView(teacherId: number, studentId: string) {
   }
   const materialIds: string[] = s.materialIds ?? [];
   return {
-    student: { id: s.id, name: s.name, lang: s.lang, level: s.level, format: s.format, progress: s.progress ?? 0, goals: s.goals ?? '', homework, materialIds },
+    student: { id: s.id, name: s.name, lang: s.lang, level: s.level, format: s.format, progress: s.progress ?? 0, goals: s.goals ?? '', homework, materialIds, payments: s.payments ?? [] },
     lessons,
     materials: (w!.data.materials ?? []).filter((m: any) => materialIds.includes(m.id)),
     teacherName: w!.data.settings?.name ?? '',
