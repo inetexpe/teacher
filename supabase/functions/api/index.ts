@@ -44,6 +44,19 @@ export async function verifyInitData(initData: string, botToken: string, maxAgeS
   return { user, startParam: p.get('start_param') ?? '' };
 }
 
+// Вхід через Telegram на сайті (Login Widget): secret = SHA256(bot_token);
+// hash = hex(HMAC_SHA256(key=secret, msg=data_check_string)). Дійсний 30 днів.
+export async function verifyLogin(d: Record<string, unknown>, botToken: string, maxAgeSec = 86400 * 30) {
+  if (!d || typeof d !== 'object' || !d.hash || !botToken) return null;
+  const check = Object.keys(d).filter((k) => k !== 'hash' && d[k] !== undefined && d[k] !== null)
+    .sort().map((k) => `${k}=${d[k]}`).join('\n');
+  const secret = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(botToken)));
+  if (hex(await hmac(secret, check)) !== String(d.hash)) return null;
+  if (Date.now() / 1000 - Number(d.auth_date ?? 0) > maxAgeSec) return null;
+  if (!d.id) return null;
+  return { user: { id: d.id, first_name: d.first_name, last_name: d.last_name, username: d.username } as any, startParam: '' };
+}
+
 type Action = { id: number; student_id: string; kind: string; payload: Record<string, unknown>; created_at: string };
 
 async function workspace(teacherId: number) {
@@ -97,7 +110,11 @@ Deno.serve(async (req) => {
   try {
     if (!BOT_TOKEN) return json({ error: 'BOT_TOKEN не задано в секретах функції' }, 500);
     const body = await req.json();
-    const auth = await verifyInitData(body.initData ?? '', BOT_TOKEN);
+    // З бота приходить initData, з сайту — дані входу; код запрошення з адреси сайту приймаємо як є:
+    // він і так відомий кожному, хто має посилання, як і start_param у Telegram.
+    const auth = body.loginData
+      ? await verifyLogin(body.loginData, BOT_TOKEN).then((a) => a && { ...a, startParam: /^s_[\w-]+$/.test(String(body.startParam ?? '')) ? String(body.startParam) : '' })
+      : await verifyInitData(body.initData ?? '', BOT_TOKEN);
     if (!auth) return json({ error: 'auth' }, 401);
     const uid = Number(auth.user.id);
     const me = { id: uid, name: [auth.user.first_name, auth.user.last_name].filter(Boolean).join(' '), username: auth.user.username ?? '' };

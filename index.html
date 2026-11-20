@@ -1005,10 +1005,16 @@ function settingsSheet(){
       {name:'bot', label:'Ім’я бота в Telegram', optional:true, placeholder:'Напр. MyTeacherBot', hint:'Потрібне для посилань-запрошень учнів у Telegram'},
       {name:'theme', label:'Тема', type:'seg', options:[['system','Як у системі'],['light','Світла'],['dark','Темна']]}
     ],
-    intro: `<p class="result-note">Версія ${APP_VERSION} · ${cloud.on ? 'дані в базі' : tg ? 'локально (немає зв’язку з базою)' : 'локально (відкрито поза Telegram)'}</p>` + (cloud.on && cloud.me ? `<p class="result-note" style="font-size:14px">Ваш Telegram ID: <b>${esc(cloud.me.id)}</b>. Додайте його в секрет TEACHER_IDS у Supabase, щоб кабінет викладача відкривався лише вам.</p>` : ''),
+    intro: `<p class="result-note">Версія ${APP_VERSION} · ${cloud.on ? (cloud.login ? 'дані в базі · вхід через сайт' : 'дані в базі') : tg ? 'локально (немає зв’язку з базою)' : 'демо (вхід не виконано)'}</p>` + (cloud.on && cloud.me ? `<p class="result-note" style="font-size:14px">Ваш Telegram ID: <b>${esc(cloud.me.id)}</b>. Додайте його в секрет TEACHER_IDS у Supabase, щоб кабінет викладача відкривався лише вам.</p>` : ''),
     onSubmit: v => { state.settings.name = v.name; state.settings.bot = v.bot.replace(/^@/, ''); state.settings.theme = v.theme || 'system'; applyTheme(); save(); toast('Налаштування збережено'); render(); }
   });
   const foot = sheetEl.querySelector('.sheet-foot');
+  if (cloud.login){
+    const lo = document.createElement('button');
+    lo.className = 'btn btn-quiet'; lo.type = 'button'; lo.textContent = 'Вийти';
+    lo.onclick = () => logout();
+    foot.prepend(lo);
+  }
   if (cloud.on && cloud.isAdmin){
     const tb = document.createElement('button');
     tb.className = 'btn btn-ghost'; tb.type = 'button';
@@ -1295,7 +1301,7 @@ function inviteLinks(sid){
   if (cloud.on){
     const s = student(sid);
     if (!s.invite){ s.invite = newInviteCode(); save(); }
-    return {tg: `https://t.me/${bot}?startapp=s_${s.invite}`, web:''};
+    return {tg: `https://t.me/${bot}?startapp=s_${s.invite}`, web: /^https?:/.test(location.protocol) ? `${location.origin}${location.pathname}?startapp=s_${s.invite}` : ''};
   }
   return {tg: bot ? `https://t.me/${bot}?startapp=s_${sid}` : '', web};
 }
@@ -1310,7 +1316,7 @@ function inviteSheet(sid){
   const body = `<p class="result-note" style="font-size:14px">${esc(s.name)} відкриє посилання й одразу побачить свій розклад, домашні завдання, матеріали та прогрес. Ваші нотатки, плани уроків та інших учнів не видно.</p>
     <div class="form-grid">
       ${tgLink ? box('Посилання для Telegram', tgLink, 'tg') : `<div class="field"><span class="lbl">Посилання для Telegram</span><div class="hint" style="font-size:13px">Вкажіть ім’я бота в налаштуваннях — і тут з’явиться посилання, яке відкриває мініапку в Telegram.</div><div><button class="btn btn-ghost btn-sm" data-open-settings>Відкрити налаштування</button></div></div>`}
-      ${cloud.on ? '' : web ? box('Посилання для браузера', web, 'web') : `<div class="field"><span class="lbl">Посилання для браузера</span><div class="hint" style="font-size:13px">З’явиться, коли апку буде викладено на сайт (напр. GitHub Pages).</div></div>`}
+      ${cloud.on ? (web ? box('Посилання для браузера (вхід через Telegram)', web, 'web') : '') : web ? box('Посилання для браузера', web, 'web') : `<div class="field"><span class="lbl">Посилання для браузера</span><div class="hint" style="font-size:13px">З’явиться, коли апку буде викладено на сайт (напр. GitHub Pages).</div></div>`}
       ${cloud.on ? `<div class="field"><span class="lbl">Статус</span><div style="font-size:14px">${s.tg ? `Підключено в Telegram: ${esc(s.tg.name)}${s.tg.username ? ' (@' + esc(s.tg.username) + ')' : ''}` : 'Учень ще не відкрив запрошення'}</div><div><button class="btn btn-quiet btn-sm" data-regen>Створити нове посилання</button></div><div class="hint">Старе посилання перестане працювати для нових відкриттів.</div></div>` : ''}
     </div>`;
   const foot = `<button class="btn btn-quiet" data-preview>${ic('users')} Як бачить учень</button><span class="spacer"></span>${share ? `<a class="btn btn-primary" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(share)}&text=${encodeURIComponent('Ваш кабінет для занять: розклад, домашні та матеріали')}">Надіслати в Telegram</a>` : ''}`;
@@ -1430,9 +1436,11 @@ function reschedForm(id){
 }
 function studentSettings(){
   const el = openSheet('Налаштування', `<div class="form-grid">${fieldHTML({name:'theme', label:'Тема', type:'seg', options:[['system','Як у системі'],['light','Світла'],['dark','Темна']]}, state.settings.theme)}</div>
+    ${cloud.login ? '<div style="margin-top:18px"><button class="btn btn-ghost" data-logout>Вийти</button></div>' : ''}
     ${mode.preview || cloud.on ? '' : `<div class="form-section" style="margin-top:22px">Прототип</div><p class="result-note" style="margin-top:8px">У робочій версії учень не зможе перемкнутися на кабінет викладача.</p><button class="btn btn-ghost" data-exit>Вийти з кабінету учня</button>`}`);
   el.querySelectorAll('input[name=theme]').forEach(r => r.onchange = () => { state.settings.theme = r.value; applyTheme(); save(); });
   const x = el.querySelector('[data-exit]'); if (x) x.onclick = () => { closeSheet(true); exitStudent(); };
+  const lo = el.querySelector('[data-logout]'); if (lo) lo.onclick = () => logout();
 }
 
 /* ========== Оплата: пакети уроків ==========
@@ -1499,10 +1507,11 @@ function render(){
   const ae = document.activeElement, aeId = ae && ae.id;
   if (key !== lastRoute) ui.profileTab = 'overview';
   const views = isStudent() ? {home:viewStudentHome, schedule:viewStudentSchedule, homework:viewStudentHomework, materials:viewStudentMaterials} : {home:viewHome, students:viewStudents, schedule:viewSchedule, library:viewLibrary, tasks:viewTasks};
-  main.innerHTML = (cloud.error ? `<div class="page"><div class="banner" style="background:var(--cancel-bg);color:var(--cancel)"><span><b>Немає зв’язку з базою</b> — дані зберігаються лише на цьому пристрої. ${esc(cloud.error)}</span></div></div>` : '') + (r==='students' && id ? viewProfile(id) : views[r]());
+  main.innerHTML = (!tg && !cloud.on && /^https?:/.test(location.protocol) && !mode.preview ? loginBanner() : '') + (cloud.error ? `<div class="page"><div class="banner" style="background:var(--cancel-bg);color:var(--cancel)"><span><b>Немає зв’язку з базою</b> — дані зберігаються лише на цьому пристрої. ${esc(cloud.error)}</span></div></div>` : '') + (r==='students' && id ? viewProfile(id) : views[r]());
   if (key !== lastRoute) window.scrollTo(0, 0);
   else { window.scrollTo(0, sy); if (aeId && $('#'+aeId)) $('#'+aeId).focus(); }
   lastRoute = key;
+  mountLoginWidget($('#tg-login'));
   const title = nav().find(n => n[0]===r)[1];
   document.title = (id && student(id) ? student(id).name : title) + (isStudent() ? ' · Мої заняття' : ' · Кабінет викладача');
   renderNav(); syncBack();
@@ -1613,6 +1622,34 @@ try {
   }
 } catch(e){}
 
+/* Вхід через Telegram на сайті (поза ботом): Telegram Login Widget дає підписані дані входу,
+   функція api перевіряє їх токеном бота. Дані входу живуть у цьому браузері 30 днів. */
+const LOGIN_KEY = 'tw-login';
+function storedLogin(){
+  try { const d = JSON.parse(localStorage.getItem(LOGIN_KEY)); return d && d.hash && d.id ? d : null; } catch(e){ return null; }
+}
+window.onTelegramAuth = user => {
+  try { localStorage.setItem(LOGIN_KEY, JSON.stringify(user)); } catch(e){ toast('Браузер не дозволяє зберегти вхід — увімкніть cookies для сайту', {error:true}); return; }
+  location.reload();
+};
+function logout(){
+  try { localStorage.removeItem(LOGIN_KEY); localStorage.removeItem('tw-teacher'); } catch(e){}
+  location.href = location.pathname;
+}
+// Віджет — це iframe від Telegram; кнопку малює сам Telegram.
+function mountLoginWidget(el){
+  if (!el || el.dataset.mounted) return;
+  el.dataset.mounted = '1';
+  const sc = document.createElement('script');
+  sc.async = true; sc.src = 'https://telegram.org/js/telegram-widget.js?22';
+  sc.setAttribute('data-telegram-login', CLOUD.bot);
+  sc.setAttribute('data-size', 'large');
+  sc.setAttribute('data-radius', '8');
+  sc.setAttribute('data-onauth', 'onTelegramAuth(user)');
+  el.appendChild(sc);
+}
+const loginBanner = () => `<div class="page"><div class="banner"><span><b>Демо-режим</b> — це приклад з вигаданими учнями. Увійдіть, щоб відкрити свій кабінет з вашими даними.</span><span id="tg-login"></span></div></div>`;
+
 /* ========== Хмара: Supabase + Telegram ==========
    Усередині Telegram дані живуть у базі й синхронізуються між викладачем і учнями
    через серверну функцію supabase/functions/api (вона перевіряє підпис Telegram).
@@ -1622,12 +1659,12 @@ const CLOUD = {
   key: 'sb_publishable_jeEZpl6VpTMZRifPztp03w_RXsaWIdW',
   bot: 'mmytteacherappbot'
 };
-const APP_VERSION = '6';
-const cloud = {error:'', teachers:[], teacherId:0, isAdmin:false, pendingTeachers:0, on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
+const APP_VERSION = '7';
+const cloud = {login:null, startParam:'', error:'', teachers:[], teacherId:0, isAdmin:false, pendingTeachers:0, on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
 let booted = false;
 async function api(op, extra={}){
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
-  const r = await fetch(CLOUD.fn, {signal: ctl.signal, method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, initData: tg.initData, teacherId: cloud.teacherId || undefined, ...extra})});
+  const r = await fetch(CLOUD.fn, {signal: ctl.signal, method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, ...(tg ? {initData: tg.initData} : {loginData: cloud.login, startParam: cloud.startParam || undefined}), teacherId: cloud.teacherId || undefined, ...extra})});
   let b = null; try { b = await r.json(); } catch(e){}
   clearTimeout(timer);
   if (r.status === 409 && b) return b;
@@ -1787,12 +1824,21 @@ document.addEventListener('change', e => { if (e.target.id === 'teacher-pick') s
 function ready(){ document.body.classList.remove('gate'); booted = true; lastRoute = ''; applyTheme(); render(); }
 async function boot(){
   document.querySelectorAll('[data-act=settings]').forEach(b => b.innerHTML = ic('settings'));
-  if (tg && CLOUD.fn){
+  const q = new URLSearchParams(location.search), sp = q.get('startapp') || '';
+  cloud.login = tg ? null : storedLogin();
+  if (!tg && !cloud.login && /^s_[\w-]+$/.test(sp) && /^https?:/.test(location.protocol)){
+    applyTheme();
+    gate('Увійдіть через Telegram', 'Щоб відкрити свій кабінет учня, підтвердьте вхід через Telegram.', '<br><span id="tg-login"></span>');
+    mountLoginWidget($('#tg-login'));
+    return;
+  }
+  if (cloud.login){ cloud.startParam = /^s_[\w-]+$/.test(sp) ? sp : ''; try { if (sp) history.replaceState(null, '', location.pathname + location.hash); } catch(e){} }
+  if ((tg || cloud.login) && CLOUD.fn){
     cloud.on = true; applyTheme();
     gate('Завантаження…', 'Підключаюся до вашого кабінету.');
     try {
       try { cloud.teacherId = Number(localStorage.getItem('tw-teacher')) || 0; } catch(e){}
-      const r = await api('init'); cloud.me = r.me;
+      const r = await api('init'); cloud.me = r.me; cloud.startParam = '';
       if (r.role === 'teacher'){
         const n = loadTeacher(r); ready();
         if (r.ownInvite) toast('Це ваше власне запрошення — відкрийте його з акаунта учня');
@@ -1804,6 +1850,7 @@ async function boot(){
       else applyGate(r.application);
     } catch(e){
       cloud.on = false;
+      if (cloud.login && e.status === 401){ try { localStorage.removeItem(LOGIN_KEY); } catch(_){} cloud.login = null; initRole(); ready(); toast('Вхід через Telegram застарів — увійдіть знову', {error:true, ms:9000}); setInterval(pull, 30000); return; }
       cloud.error = e.status === 401 ? 'Telegram-підпис не пройшов перевірку — перевірте секрет BOT_TOKEN у Supabase (токен має бути від цього ж бота).'
         : e.name === 'AbortError' ? 'Сервер не відповів за 15 секунд.'
         : e.status ? `Сервер відповів помилкою ${e.status}: ${e.message}` : `Немає зв’язку з сервером (${e.message}).`;
