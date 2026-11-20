@@ -1006,6 +1006,13 @@ function settingsSheet(){
     onSubmit: v => { state.settings.name = v.name; state.settings.bot = v.bot.replace(/^@/, ''); state.settings.theme = v.theme || 'system'; applyTheme(); save(); toast('Налаштування збережено'); render(); }
   });
   const foot = sheetEl.querySelector('.sheet-foot');
+  if (cloud.on && cloud.isAdmin){
+    const tb = document.createElement('button');
+    tb.className = 'btn btn-ghost'; tb.type = 'button';
+    tb.textContent = 'Викладачі' + (cloud.pendingTeachers ? ` · ${cloud.pendingTeachers} нових` : '');
+    tb.onclick = () => teachersSheet();
+    foot.prepend(tb);
+  }
   const reset = document.createElement('button');
   reset.className = 'btn btn-danger'; reset.type = 'button'; reset.textContent = cloud.on ? 'Дані…' : 'Скинути до демо-даних';
   reset.onclick = () => cloud.on ? dataSheet() : confirmSheet('Скинути дані?', 'Усі ваші зміни буде замінено демонстраційними даними.', 'Скинути', () => {
@@ -1318,6 +1325,7 @@ function studentBanner(){
   const s = me();
   if (mode.preview) return `<div class="banner"><span>Перегляд як учень: <b>${esc(s ? s.name : '')}</b>. Так цей кабінет побачить учень за запрошенням.</span><button class="btn btn-ghost btn-sm" data-act="exit-student">Повернутися до кабінету викладача</button></div>`;
   if (isDemoMe()) return `<div class="banner"><span>Демо-режим: синхронізацію з викладачем ще не підключено, тому показано приклад даних.</span></div>`;
+  if (cloud.on && cloud.teachers.length > 1) return `<div class="banner" style="background:var(--surface-2)"><label for="teacher-pick">Викладач</label><select class="input filter-select" id="teacher-pick" style="width:auto;min-width:200px;flex:0 1 auto">${cloud.teachers.map(t => `<option value="${t.id}"${t.id === cloud.teacherId ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select></div>`;
   return '';
 }
 const noStudent = () => `<div class="page">${studentBanner()}<div class="panel">${empty('Профіль не знайдено','Попросіть викладача надіслати нове посилання-запрошення.')}</div></div>`;
@@ -1551,12 +1559,12 @@ const CLOUD = {
   key: 'sb_publishable_jeEZpl6VpTMZRifPztp03w_RXsaWIdW',
   bot: 'mmytteacherappbot'
 };
-const APP_VERSION = '4';
-const cloud = {error:'', on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
+const APP_VERSION = '5';
+const cloud = {error:'', teachers:[], teacherId:0, isAdmin:false, pendingTeachers:0, on:false, me:null, version:0, dirty:false, saving:false, again:false, applied:[], seen:new Set(), timer:null, offline:false};
 let booted = false;
 async function api(op, extra={}){
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
-  const r = await fetch(CLOUD.fn, {signal: ctl.signal, method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, initData: tg.initData, ...extra})});
+  const r = await fetch(CLOUD.fn, {signal: ctl.signal, method:'POST', headers:{'Content-Type':'application/json', apikey:CLOUD.key, Authorization:'Bearer ' + CLOUD.key}, body: JSON.stringify({op, initData: tg.initData, teacherId: cloud.teacherId || undefined, ...extra})});
   let b = null; try { b = await r.json(); } catch(e){}
   clearTimeout(timer);
   if (r.status === 409 && b) return b;
@@ -1593,6 +1601,7 @@ function applyActions(list){
   return n;
 }
 function loadTeacher(r){
+  cloud.isAdmin = !!r.isAdmin; cloud.pendingTeachers = r.pendingTeachers || 0;
   state = r.data && Array.isArray(r.data.students) ? r.data : emptyWorkspace();
   state.settings = Object.assign({name:'', theme:'system', bot:CLOUD.bot}, state.settings);
   if (!state.settings.bot) state.settings.bot = CLOUD.bot;
@@ -1603,6 +1612,8 @@ function loadTeacher(r){
   return n;
 }
 function loadStudent(r){
+  cloud.teachers = r.teachers || []; cloud.teacherId = r.current || 0;
+  try { if (cloud.teacherId) localStorage.setItem('tw-teacher', String(cloud.teacherId)); } catch(e){}
   let theme = 'system'; try { theme = localStorage.getItem('tw-theme') || 'system'; } catch(e){}
   const v = r.view;
   state = {v:1, students: v ? [{...v.student, notes:[], summary:'', touched:0}] : [], lessons: v ? v.lessons : [], materials: v ? v.materials : [], plans:[], tasks:[], settings:{name:'', theme, bot:CLOUD.bot}};
@@ -1653,10 +1664,63 @@ async function pull(){
     if (n) toast(`Оновлення від учнів: ${n}`);
   } catch(e){}
 }
-function gate(title, text){
+function gate(title, text, btn=''){
   document.body.classList.add('gate');
-  $('#main').innerHTML = `<div class="page"><div class="panel" style="max-width:520px;margin:12vh auto 0">${empty(title, text)}</div></div>`;
+  $('#main').innerHTML = `<div class="page"><div class="panel" style="max-width:520px;margin:12vh auto 0">${empty(title, text, btn)}</div></div>`;
 }
+// Екран для того, хто відкрив бота без запрошення: учню — підказка, викладачу — запит на доступ.
+function applyGate(status){
+  const texts = {
+    pending: ['Запит надіслано', 'Адміністратор розгляне ваш запит. Коли його підтвердять, відкрийте бота знову — тут з’явиться ваш кабінет викладача.'],
+    rejected: ['Запит відхилено', 'Адміністратор не підтвердив доступ викладача. Можна надіслати запит ще раз.']
+  };
+  const [title, text] = texts[status] || ['Потрібне запрошення', 'Учні входять за посиланням-запрошенням від свого викладача. Якщо ви викладач, надішліть запит на доступ.'];
+  gate(title, text, status === 'pending'
+    ? '<br><button class="btn btn-ghost" id="gate-recheck">Перевірити ще раз</button>'
+    : '<br><button class="btn btn-primary" id="gate-apply">Я викладач — надіслати запит</button>');
+  const ap = $('#gate-apply'), rc = $('#gate-recheck');
+  if (rc) rc.onclick = () => location.reload();
+  if (ap) ap.onclick = async () => {
+    ap.disabled = true;
+    try {
+      const r = await api('apply');
+      if (r.role === 'teacher'){ loadTeacher(r); ready(); }
+      else { applyGate('pending'); toast('Запит надіслано адміністратору'); }
+    } catch(e){ ap.disabled = false; toast('Не вдалося надіслати запит — перевірте з’єднання', {error:true}); }
+  };
+}
+async function teachersSheet(){
+  const el = openSheet('Викладачі', '<p class="result-note">Завантаження…</p>', {wide:true});
+  try { renderTeachers(el, (await api('teachers')).teachers); }
+  catch(e){ el.querySelector('.sheet-body').innerHTML = '<p class="result-note">Не вдалося завантажити список — перевірте з’єднання.</p>'; }
+}
+function renderTeachers(el, list){
+  const action = t => t.admin ? '<span class="tag">Адміністратор</span>'
+    : t.status === 'approved' ? `<button class="btn btn-quiet btn-sm" data-dec="rejected" data-id="${t.tg_id}">Забрати доступ</button>`
+    : t.status === 'pending' ? `<button class="btn btn-quiet btn-sm" data-dec="rejected" data-id="${t.tg_id}">Відхилити</button><button class="btn btn-primary btn-sm" data-dec="approved" data-id="${t.tg_id}">Підтвердити</button>`
+    : `<button class="btn btn-ghost btn-sm" data-dec="approved" data-id="${t.tg_id}">Дати доступ</button>`;
+  const group = (title, items) => items.length ? `<div class="group-title"><h2>${title}</h2><span class="n">${items.length}</span></div><ul class="rows panel">${items.map(t =>
+    `<li class="task-row" style="flex-wrap:wrap"><span class="row-main" style="min-width:160px"><span class="row-title">${esc(t.name || 'Без імені')}</span><span class="row-meta">${t.username ? '@' + esc(t.username) + ' · ' : ''}ID ${esc(t.tg_id)}</span></span><span style="display:flex;gap:6px">${action(t)}</span></li>`).join('')}</ul>` : '';
+  const groups = group('Запити', list.filter(t => t.status === 'pending')) + group('Мають доступ', list.filter(t => t.status === 'approved')) + group('Відхилені', list.filter(t => t.status === 'rejected'));
+  el.querySelector('.sheet-body').innerHTML = `<p class="result-note" style="font-size:14px">Новий викладач відкриває бота й натискає «Я викладач — надіслати запит». Після підтвердження він отримує свій окремий кабінет: ваших учнів і даних він не бачить.</p>`
+    + (groups || `<div class="panel">${empty('Запитів поки немає', 'Надішліть колезі посилання на бота: t.me/' + esc(CLOUD.bot))}</div>`);
+  el.querySelectorAll('[data-dec]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try {
+      const r = await api('decide', {tgId: Number(b.dataset.id), status: b.dataset.dec});
+      cloud.pendingTeachers = r.teachers.filter(t => t.status === 'pending').length;
+      renderTeachers(el, r.teachers);
+      toast(b.dataset.dec === 'approved' ? 'Доступ надано' : 'Доступ закрито');
+    } catch(e){ b.disabled = false; toast('Не вдалося зберегти рішення — перевірте з’єднання', {error:true}); }
+  });
+}
+async function switchTeacher(id){
+  cloud.teacherId = id;
+  try { localStorage.setItem('tw-teacher', String(id)); } catch(e){}
+  try { const r = await api('view'); loadStudent(r); lastRoute = ''; render(); }
+  catch(e){ toast('Не вдалося перемкнути викладача — перевірте з’єднання', {error:true}); }
+}
+document.addEventListener('change', e => { if (e.target.id === 'teacher-pick') switchTeacher(Number(e.target.value)); });
 function ready(){ document.body.classList.remove('gate'); booted = true; lastRoute = ''; applyTheme(); render(); }
 async function boot(){
   document.querySelectorAll('[data-act=settings]').forEach(b => b.innerHTML = ic('settings'));
@@ -1664,15 +1728,17 @@ async function boot(){
     cloud.on = true; applyTheme();
     gate('Завантаження…', 'Підключаюся до вашого кабінету.');
     try {
+      try { cloud.teacherId = Number(localStorage.getItem('tw-teacher')) || 0; } catch(e){}
       const r = await api('init'); cloud.me = r.me;
       if (r.role === 'teacher'){
         const n = loadTeacher(r); ready();
         if (r.ownInvite) toast('Це ваше власне запрошення — відкрийте його з акаунта учня');
         else if (n) toast(`Оновлення від учнів: ${n}`);
+        if (cloud.pendingTeachers) toast(`Нові запити від викладачів: ${cloud.pendingTeachers}. Налаштування → Викладачі`);
       }
       else if (r.role === 'student'){ loadStudent(r); ready(); }
       else if (r.role === 'invalid-invite') gate('Запрошення недійсне', 'Посилання застаріло або учня видалено. Попросіть викладача надіслати нове.');
-      else gate('Потрібне запрошення', 'Цей бот — кабінет для учнів викладача. Попросіть у викладача посилання-запрошення й відкрийте його.');
+      else applyGate(r.application);
     } catch(e){
       cloud.on = false;
       cloud.error = e.status === 401 ? 'Telegram-підпис не пройшов перевірку — перевірте секрет BOT_TOKEN у Supabase (токен має бути від цього ж бота).'
